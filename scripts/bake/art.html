@@ -1,0 +1,902 @@
+<!doctype html>
+<!--
+  Premium shablonlar uchun fon va dekor rasmlarini chizadi (Desktop/Prompt'dagi effektlar asosida).
+  scripts/bake/bake.js har bir rasmni shu sahifadan headless Chrome orqali oladi:
+    art.html?asset=aura-cover&w=1920&h=1080
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: transparent;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const ASSET = params.get("asset");
+      const W = Number(params.get("w")) || 1920;
+      const H = Number(params.get("h")) || 1080;
+      const canvas = document.getElementById("c");
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext("2d");
+
+      // Takrorlanuvchi tasodif: har safar bir xil rasm chiqadi.
+      let seed = 20261013;
+      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      const range = (a, b) => a + (b - a) * rnd();
+      const S = W / 1920; // masshtab
+
+      function hexA(hex, alpha) {
+        const n = parseInt(hex.slice(1), 16);
+        return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+      }
+
+      function fill(color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, W, H);
+      }
+
+      function grain(amount) {
+        const img = ctx.getImageData(0, 0, W, H);
+        const d = img.data;
+        for (let i = 0; i < d.length; i += 4) {
+          if (d[i + 3] === 0) continue;
+          const n = (rnd() - 0.5) * amount;
+          d[i] += n;
+          d[i + 1] += n;
+          d[i + 2] += n;
+        }
+        ctx.putImageData(img, 0, 0);
+      }
+
+      function blob(x, y, r, color, alpha) {
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, hexA(color, alpha));
+        g.addColorStop(0.45, hexA(color, alpha * 0.55));
+        g.addColorStop(1, hexA(color, 0));
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function vignette(alpha, inner = 0.35) {
+        const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * inner, W / 2, H / 2, Math.hypot(W, H) / 1.7);
+        g.addColorStop(0, "rgba(0,0,0,0)");
+        g.addColorStop(1, `rgba(0,0,0,${alpha})`);
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+      }
+
+      function sideShade(alpha, to = 0.62, fromRight = false) {
+        const g = ctx.createLinearGradient(fromRight ? W : 0, 0, fromRight ? W * (1 - to) : W * to, 0);
+        g.addColorStop(0, `rgba(0,0,0,${alpha})`);
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+      }
+
+      // Kubik Bezier egri chiziq bo'ylab qalin, xira "nur" chizadi.
+      function sweep(p, width, color, alpha, blur, dx = 0, dy = 0) {
+        ctx.save();
+        ctx.filter = `blur(${blur * S}px)`;
+        ctx.strokeStyle = hexA(color, alpha);
+        ctx.lineWidth = width * S;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo((p[0] + dx) * S, (p[1] + dy) * S);
+        ctx.bezierCurveTo((p[2] + dx) * S, (p[3] + dy) * S, (p[4] + dx) * S, (p[5] + dy) * S, (p[6] + dx) * S, (p[7] + dy) * S);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // ---------- AURA: shader.md'dagi MeshGradient (qora + cyan/teal/to'q sariq) ----------
+
+      function aura(p, { strength = 1, wire = true, shade = 0.55, darkSpot = null }) {
+        fill("#010405");
+        sweep(p, 640, "#0c4a5e", 0.95 * strength, 165);
+        sweep(p, 360, "#0e7490", 0.9 * strength, 120, -20, -40);
+        sweep(p, 230, "#f97316", 0.72 * strength, 100, -150, -290);
+        sweep(p, 90, "#fdba74", 0.35 * strength, 60, -130, -250);
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        sweep(p, 150, "#22d3ee", 0.6 * strength, 75, 0, -10);
+        sweep(p, 26, "#ecfeff", 0.45 * strength, 26, 10, -20);
+        ctx.restore();
+        ctx.save();
+        ctx.filter = `blur(${210 * S}px)`;
+        blob(p[6] * 0.82 * S, (p[7] + 520) * S, 420 * S, "#cbd5e1", 0.12 * strength);
+        ctx.restore();
+        if (darkSpot) {
+          ctx.save();
+          ctx.filter = `blur(${170 * S}px)`;
+          ctx.fillStyle = "rgba(0,0,0,0.88)";
+          ctx.beginPath();
+          ctx.arc(darkSpot[0] * S, darkSpot[1] * S, darkSpot[2] * S, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        if (wire) {
+          // MeshGradient wireframe qatlami: nur bo'ylab nozik to'r
+          ctx.save();
+          ctx.globalCompositeOperation = "lighter";
+          ctx.strokeStyle = `rgba(255,255,255,${0.075 * strength})`;
+          ctx.lineWidth = 1 * S;
+          for (let k = -10; k <= 10; k++) {
+            ctx.beginPath();
+            const o = k * 42;
+            ctx.moveTo((p[0] + o * 0.6) * S, (p[1] + o) * S);
+            ctx.bezierCurveTo((p[2] + o * 0.6) * S, (p[3] + o) * S, (p[4] + o * 0.6) * S, (p[5] + o) * S, (p[6] + o * 0.6) * S, (p[7] + o) * S);
+            ctx.stroke();
+          }
+          // ko'ndalang chiziqlar
+          for (let t = 0.04; t < 1; t += 0.045) {
+            const bez = (a, b, c, d) => (1 - t) ** 3 * a + 3 * (1 - t) ** 2 * t * b + 3 * (1 - t) * t * t * c + t ** 3 * d;
+            const x = bez(p[0], p[2], p[4], p[6]);
+            const y = bez(p[1], p[3], p[5], p[7]);
+            ctx.beginPath();
+            ctx.moveTo((x - 250) * S, (y - 420) * S);
+            ctx.lineTo((x + 250) * S, (y + 420) * S);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+        if (shade) sideShade(shade);
+        vignette(0.5);
+        grain(9);
+      }
+
+      // ---------- NEON: Hero animate.md'dagi yonib turgan trubkalar ----------
+
+      function loopPath(cx, cy, rx, ry, rot, wobble, phase) {
+        const pts = [];
+        const N = 90;
+        for (let i = 0; i <= N; i++) {
+          const t = (i / N) * Math.PI * 2;
+          const r = 1 + wobble * Math.sin(3 * t + phase) + wobble * 0.6 * Math.cos(5 * t - phase);
+          const x = rx * r * Math.cos(t);
+          const y = ry * r * Math.sin(t);
+          pts.push([cx + x * Math.cos(rot) - y * Math.sin(rot), cy + x * Math.sin(rot) + y * Math.cos(rot)]);
+        }
+        return pts;
+      }
+
+      function tube(pts, c1, c2, width, alpha = 1) {
+        const xs = pts.map((p) => p[0]);
+        const g = ctx.createLinearGradient(Math.min(...xs) * S, 0, Math.max(...xs) * S, 0);
+        g.addColorStop(0, c1);
+        g.addColorStop(1, c2);
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        const draw = () => {
+          ctx.beginPath();
+          pts.forEach(([x, y], i) => (i ? ctx.lineTo(x * S, y * S) : ctx.moveTo(x * S, y * S)));
+          ctx.stroke();
+        };
+        const passes = [
+          [width * 5.5, 0.06, 60],
+          [width * 2.6, 0.18, 26],
+          [width * 1.2, 0.75, 8],
+          [width * 0.42, 0.95, 0],
+        ];
+        for (const [w, a, b] of passes) {
+          ctx.globalAlpha = a * alpha;
+          ctx.lineWidth = w * S;
+          ctx.strokeStyle = g;
+          ctx.shadowBlur = b * S;
+          ctx.shadowColor = c1;
+          draw();
+        }
+        // ichki oq yadro
+        ctx.globalAlpha = 0.32 * alpha;
+        ctx.lineWidth = width * 0.14 * S;
+        ctx.strokeStyle = "#ffffff";
+        ctx.shadowBlur = 0;
+        draw();
+        ctx.restore();
+      }
+
+      const NEON = [
+        ["#ff008a", "#fe8a2e"],
+        ["#f967fb", "#6958d5"],
+        ["#60aed5", "#83f36e"],
+        ["#6958d5", "#ff008a"],
+        ["#53bc28", "#60aed5"],
+        ["#fe8a2e", "#f967fb"],
+      ];
+
+      function neon(cx, cy, scale, { count = 6, alpha = 1, center = 0.75, shade = 0, centerR = 470 }) {
+        fill("#030304");
+        blob(cx * S, cy * S, 760 * S * scale, "#2a0a3a", 0.5);
+        for (let i = 0; i < count; i++) {
+          const [c1, c2] = NEON[i % NEON.length];
+          const pts = loopPath(
+            cx + range(-130, 130) * scale,
+            cy + range(-70, 70) * scale,
+            range(330, 640) * scale,
+            range(110, 300) * scale,
+            range(-0.75, 0.75),
+            range(0.05, 0.17),
+            range(0, 6),
+          );
+          tube(pts, c1, c2, range(4, 12) * scale, alpha * range(0.75, 1));
+        }
+        if (center) {
+          const g = ctx.createRadialGradient(cx * S, cy * S, 0, cx * S, cy * S, centerR * S * scale);
+          g.addColorStop(0, `rgba(0,0,0,${center})`);
+          g.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, W, H);
+        }
+        if (shade) sideShade(shade, 0.6);
+        vignette(0.6);
+        grain(7);
+      }
+
+      // ---------- KINETIC: kinetic.md (neon-mesh) va kinetic-grid ----------
+
+      function kinetic({ bump = [1450, 820], radius = 420, amp = 1, highlight = true, gridAlpha = 0.34, spacing = 64, tilt = 0.32 }) {
+        fill("#050702");
+        blob(bump[0] * S, bump[1] * S, radius * 1.7 * S, "#4d7c0f", 0.13);
+        ctx.fillStyle = "rgba(255,255,255,0.04)";
+        for (let x = 14; x < W; x += 28 * S) for (let y = 14; y < H; y += 28 * S) ctx.fillRect(x, y, 1.4 * S, 1.4 * S);
+
+        const sp = spacing;
+        const cx = 960;
+        const cy = 540;
+        const f = 1500;
+        const cols = Math.ceil(2600 / sp);
+        const rows = Math.ceil(1800 / sp);
+        const project = (gx, gy) => {
+          // Tekislik X o'qi atrofida egilgan; bo'rtma tomoshabin tomon chiqadi (Verlet mato kabi).
+          const dx = gx - bump[0];
+          const dy = gy - bump[1];
+          const d = Math.sqrt(dx * dx + dy * dy);
+          const bulge = amp * Math.exp(-(d * d) / (2 * radius * radius));
+          const wave = 9 * Math.sin(gy / 190 + gx / 330) + 6 * Math.cos(gx / 240 - gy / 400);
+          const X = gx - cx + dx * bulge * 0.18;
+          const Y0 = gy - cy + dy * bulge * 0.18;
+          const Z0 = -bulge * 260 + wave;
+          const Y = Y0 * Math.cos(tilt) - Z0 * Math.sin(tilt);
+          const Z = Y0 * Math.sin(tilt) + Z0 * Math.cos(tilt);
+          const k = f / (f + Z);
+          return [cx + X * k, cy + Y * k, d];
+        };
+        const grid = [];
+        for (let j = 0; j < rows; j++) {
+          grid[j] = [];
+          for (let i = 0; i < cols; i++) grid[j][i] = project(i * sp - 340, j * sp - 360);
+        }
+        const seg = (a, b) => {
+          ctx.beginPath();
+          ctx.moveTo(a[0] * S, a[1] * S);
+          ctx.lineTo(b[0] * S, b[1] * S);
+          ctx.stroke();
+        };
+        ctx.lineWidth = 1.25 * S;
+        ctx.strokeStyle = `rgba(132,204,22,${gridAlpha})`;
+        for (let j = 0; j < rows; j++)
+          for (let i = 0; i < cols; i++) {
+            if (i < cols - 1) seg(grid[j][i], grid[j][i + 1]);
+            if (j < rows - 1) seg(grid[j][i], grid[j + 1][i]);
+          }
+        if (highlight) {
+          ctx.save();
+          ctx.strokeStyle = "#BEF202";
+          ctx.shadowColor = "#BEF202";
+          ctx.shadowBlur = 16 * S;
+          ctx.lineCap = "round";
+          const R = radius * 0.72;
+          for (let j = 0; j < rows; j++)
+            for (let i = 0; i < cols; i++) {
+              const a = grid[j][i];
+              for (const b of [grid[j][i + 1], grid[j + 1]?.[i]]) {
+                if (!b) continue;
+                const d = Math.min(a[2], b[2]);
+                if (d > R) continue;
+                ctx.lineWidth = (2 + 3.2 * (1 - d / R)) * S;
+                ctx.globalAlpha = Math.min(1, 1.6 * (1 - d / R) + 0.25);
+                seg(a, b);
+              }
+            }
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = "#BEF202";
+          for (let j = 0; j < rows; j++)
+            for (let i = 0; i < cols; i++) {
+              const a = grid[j][i];
+              if (a[2] < R * 0.5) {
+                ctx.beginPath();
+                ctx.arc(a[0] * S, a[1] * S, 6.5 * S, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            }
+          ctx.restore();
+        }
+        vignette(0.55, 0.45);
+        grain(6);
+      }
+
+      // ---------- AURORA: prompt-background-light.md (yorug') ----------
+
+      function aurora({ fx = 1, fy = 0, reach = 0.75, alpha = 0.6 }) {
+        fill("#fafafa");
+        const off = document.createElement("canvas");
+        off.width = W;
+        off.height = H;
+        const o = off.getContext("2d");
+        const colors = ["#3b82f6", "#a5b4fc", "#93c5fd", "#ddd6fe", "#60a5fa", "#818cf8"];
+        o.filter = `blur(${58 * S}px)`;
+        let x = -400;
+        let k = 0;
+        while (x < 2400) {
+          const w = range(70, 230);
+          o.strokeStyle = hexA(colors[k % colors.length], range(0.55, 0.95));
+          o.lineWidth = w * S;
+          o.beginPath();
+          const sway = range(-160, 160);
+          o.moveTo((x + 260) * S, -120 * S);
+          o.bezierCurveTo((x + 160 + sway) * S, 320 * S, (x - 40 - sway) * S, 760 * S, (x - 220) * S, 1220 * S);
+          o.stroke();
+          x += w * range(0.55, 0.95);
+          k += 1;
+        }
+        o.filter = `blur(${22 * S}px)`;
+        o.globalAlpha = 0.5;
+        o.strokeStyle = "#ffffff";
+        for (let xx = -300; xx < 2400; xx += range(140, 260)) {
+          o.lineWidth = range(18, 60) * S;
+          o.beginPath();
+          o.moveTo((xx + 250) * S, -120 * S);
+          o.bezierCurveTo((xx + 150) * S, 320 * S, (xx - 30) * S, 760 * S, (xx - 210) * S, 1220 * S);
+          o.stroke();
+        }
+        o.globalAlpha = 1;
+        o.filter = "none";
+        o.globalCompositeOperation = "destination-in";
+        const g = o.createRadialGradient(W * fx, H * fy, 0, W * fx, H * fy, Math.hypot(W, H) * reach);
+        g.addColorStop(0, "rgba(0,0,0,1)");
+        g.addColorStop(0.16, "rgba(0,0,0,0.95)");
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        o.fillStyle = g;
+        o.fillRect(0, 0, W, H);
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(off, 0, 0);
+        ctx.globalAlpha = 1;
+        grain(4);
+      }
+
+      // ---------- COSMOS: animated-planets.md ----------
+
+      function cosmos({ nebula = 1, milky = true }) {
+        const g = ctx.createRadialGradient(W * 0.55, H * 0.45, 0, W * 0.55, H * 0.45, Math.hypot(W, H) * 0.7);
+        g.addColorStop(0, "#0d1022");
+        g.addColorStop(1, "#020206");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+        ctx.save();
+        ctx.filter = `blur(${150 * S}px)`;
+        blob(1420 * S, 260 * S, 560 * S, "#3b1d6e", 0.55 * nebula);
+        blob(420 * S, 840 * S, 640 * S, "#0e2a5a", 0.5 * nebula);
+        blob(1050 * S, 620 * S, 360 * S, "#5b1a4a", 0.3 * nebula);
+        ctx.restore();
+        if (milky) {
+          ctx.save();
+          ctx.filter = `blur(${70 * S}px)`;
+          ctx.strokeStyle = "rgba(200,210,255,0.06)";
+          ctx.lineWidth = 260 * S;
+          ctx.beginPath();
+          ctx.moveTo(-100 * S, 900 * S);
+          ctx.bezierCurveTo(600 * S, 600 * S, 1300 * S, 420 * S, 2100 * S, 80 * S);
+          ctx.stroke();
+          ctx.restore();
+        }
+        for (let i = 0; i < 2200 * S * S; i++) {
+          const r = Math.pow(rnd(), 3) * 1.6 * S + 0.35 * S;
+          ctx.fillStyle = `rgba(${220 + range(-20, 35)},${225 + range(-15, 30)},255,${range(0.25, 0.95)})`;
+          ctx.beginPath();
+          ctx.arc(rnd() * W, rnd() * H, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        for (let i = 0; i < 26; i++) {
+          const x = rnd() * W;
+          const y = rnd() * H;
+          blob(x, y, range(10, 22) * S, "#cfe0ff", 0.45);
+          ctx.strokeStyle = "rgba(220,230,255,0.35)";
+          ctx.lineWidth = 1 * S;
+          const l = range(8, 18) * S;
+          ctx.beginPath();
+          ctx.moveTo(x - l, y);
+          ctx.lineTo(x + l, y);
+          ctx.moveTo(x, y - l);
+          ctx.lineTo(x, y + l);
+          ctx.stroke();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(x, y, 1.6 * S, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        vignette(0.45, 0.5);
+        grain(5);
+      }
+
+      function planet({ base, bands, atmo, craters = 0, ring = false }) {
+        const R = Math.min(W, H) * (ring ? 0.3 : 0.36);
+        const cx = W / 2;
+        const cy = H / 2;
+        const ringArc = (front) => {
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(-0.32);
+          ctx.scale(1, 0.24);
+          for (let k = 0; k < 22; k++) {
+            ctx.strokeStyle = hexA(bands[k % bands.length], range(0.15, 0.42));
+            ctx.lineWidth = R * range(0.012, 0.035);
+            ctx.beginPath();
+            const rr = R * (1.32 + k * 0.022);
+            if (front) ctx.arc(0, 0, rr, 0, Math.PI);
+            else ctx.arc(0, 0, rr, Math.PI, Math.PI * 2);
+            ctx.stroke();
+          }
+          ctx.restore();
+        };
+        const halo = ctx.createRadialGradient(cx, cy, R * 0.92, cx, cy, R * 1.34);
+        halo.addColorStop(0, hexA(atmo, 0.5));
+        halo.addColorStop(0.35, hexA(atmo, 0.16));
+        halo.addColorStop(1, hexA(atmo, 0));
+        ctx.fillStyle = halo;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R * 1.36, 0, Math.PI * 2);
+        ctx.fill();
+        if (ring) ringArc(false);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        ctx.clip();
+        const body = ctx.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.1, cx, cy, R * 1.05);
+        body.addColorStop(0, base[0]);
+        body.addColorStop(0.55, base[1]);
+        body.addColorStop(1, base[2]);
+        ctx.fillStyle = body;
+        ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+        // yumshoq dog'lar (mottling)
+        ctx.filter = `blur(${R * 0.05}px)`;
+        for (let i = 0; i < 140; i++) {
+          const a = rnd() * Math.PI * 2;
+          const d = Math.sqrt(rnd()) * R;
+          blob(cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.9, range(R * 0.06, R * 0.22), bands[i % bands.length], range(0.08, 0.26));
+        }
+        // nozik kenglik yo'llari
+        for (let i = 0; i < 26; i++) {
+          const y = cy - R + rnd() * R * 2;
+          ctx.strokeStyle = hexA(bands[i % bands.length], range(0.06, ring ? 0.32 : 0.16));
+          ctx.lineWidth = range(R * 0.01, R * 0.05);
+          ctx.beginPath();
+          for (let x = -R; x <= R; x += R / 30) {
+            const yy = y + Math.sin(x / (R * 0.25) + i) * R * 0.02;
+            x === -R ? ctx.moveTo(cx + x, yy) : ctx.lineTo(cx + x, yy);
+          }
+          ctx.stroke();
+        }
+        ctx.filter = "none";
+        for (let i = 0; i < craters; i++) {
+          const a = rnd() * Math.PI * 2;
+          const d = Math.sqrt(rnd()) * R * 0.85;
+          const x = cx + Math.cos(a) * d;
+          const y = cy + Math.sin(a) * d;
+          const r = range(R * 0.02, R * 0.06);
+          const cr = ctx.createRadialGradient(x + r * 0.2, y + r * 0.2, 0, x, y, r);
+          cr.addColorStop(0, "rgba(0,0,0,0.16)");
+          cr.addColorStop(0.75, "rgba(0,0,0,0.08)");
+          cr.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = cr;
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "rgba(255,255,255,0.1)";
+          ctx.lineWidth = r * 0.18;
+          ctx.beginPath();
+          ctx.arc(x, y, r * 0.92, Math.PI * 0.95, Math.PI * 1.6);
+          ctx.stroke();
+        }
+        const shadow = ctx.createRadialGradient(cx - R * 0.55, cy - R * 0.55, R * 0.4, cx - R * 0.2, cy - R * 0.2, R * 1.9);
+        shadow.addColorStop(0, "rgba(0,0,0,0)");
+        shadow.addColorStop(0.55, "rgba(0,0,0,0.38)");
+        shadow.addColorStop(1, "rgba(0,0,0,0.96)");
+        ctx.fillStyle = shadow;
+        ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+        ctx.restore();
+        ctx.save();
+        ctx.strokeStyle = hexA(atmo, 0.7);
+        ctx.lineWidth = R * 0.016;
+        ctx.filter = `blur(${R * 0.012}px)`;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R * 0.995, Math.PI * 0.95, Math.PI * 1.75);
+        ctx.stroke();
+        ctx.restore();
+        if (ring) ringArc(true);
+      }
+
+      // ---------- EDITORIAL: scroll-web.md / Glacier (siyoh, qog'oz, signal to'q sariq) ----------
+
+      function editorial(ink) {
+        fill(ink ? "#0B0E14" : "#F2F4F1");
+        const line = ink ? "rgba(255,255,255,0.06)" : "rgba(11,14,20,0.06)";
+        ctx.strokeStyle = line;
+        ctx.lineWidth = 1 * S;
+        for (let x = 160; x < 1920; x += 160) {
+          ctx.beginPath();
+          ctx.moveTo(x * S, 0);
+          ctx.lineTo(x * S, H);
+          ctx.stroke();
+        }
+        // bosma burchak belgilari
+        ctx.strokeStyle = ink ? "rgba(255,255,255,0.28)" : "rgba(11,14,20,0.3)";
+        ctx.lineWidth = 1.4 * S;
+        const m = 54 * S;
+        const l = 26 * S;
+        for (const [x, y, sx, sy] of [
+          [m, m, 1, 1],
+          [W - m, m, -1, 1],
+          [m, H - m, 1, -1],
+          [W - m, H - m, -1, -1],
+        ]) {
+          ctx.beginPath();
+          ctx.moveTo(x, y + sy * l);
+          ctx.lineTo(x, y);
+          ctx.lineTo(x + sx * l, y);
+          ctx.stroke();
+        }
+        grain(ink ? 9 : 7);
+      }
+
+      // ---------- MISR: Misr-Taqdimoti (qora bronza, oltin, piramidalar) ----------
+
+      function dust(count, color, maxR = 1.6) {
+        for (let i = 0; i < count; i++) {
+          ctx.fillStyle = hexA(color, range(0.08, 0.5));
+          ctx.beginPath();
+          ctx.arc(rnd() * W, rnd() * H, range(0.4, maxR) * S, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      function pyramids(baseY, items, sunX, sunR) {
+        if (sunR) {
+          blob(sunX * S, (baseY - sunR * 0.6) * S, sunR * 3.2 * S, "#d4a24c", 0.35);
+          blob(sunX * S, (baseY - sunR * 0.6) * S, sunR * S, "#f3d48c", 0.85);
+        }
+        for (const [x, w, h] of items) {
+          const lit = ctx.createLinearGradient((x - w / 2) * S, 0, (x + w / 2) * S, 0);
+          lit.addColorStop(0, "#2a1f14");
+          lit.addColorStop(0.5, "#3a2a18");
+          lit.addColorStop(0.5, "#17110b");
+          lit.addColorStop(1, "#0f0b07");
+          ctx.fillStyle = lit;
+          ctx.beginPath();
+          ctx.moveTo((x - w / 2) * S, baseY * S);
+          ctx.lineTo(x * S, (baseY - h) * S);
+          ctx.lineTo((x + w / 2) * S, baseY * S);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = "rgba(230,190,110,0.55)";
+          ctx.lineWidth = 1.6 * S;
+          ctx.beginPath();
+          ctx.moveTo((x - w / 2) * S, baseY * S);
+          ctx.lineTo(x * S, (baseY - h) * S);
+          ctx.stroke();
+        }
+        const ground = ctx.createLinearGradient(0, baseY * S, 0, H);
+        ground.addColorStop(0, "#1c150e");
+        ground.addColorStop(1, "#0b0806");
+        ctx.fillStyle = ground;
+        ctx.fillRect(0, baseY * S, W, H - baseY * S);
+        ctx.strokeStyle = "rgba(212,168,86,0.35)";
+        ctx.lineWidth = 1 * S;
+        ctx.beginPath();
+        ctx.moveTo(0, baseY * S);
+        ctx.lineTo(W, baseY * S);
+        ctx.stroke();
+      }
+
+      function misr({ horizon = 0, items = [], sunX = 1400, sunR = 0, columns = false }) {
+        const g = ctx.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, "#0d0a07");
+        g.addColorStop(0.65, "#1b140d");
+        g.addColorStop(1, "#120d09");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+        blob(sunX * S, 640 * S, 900 * S, "#6b4a1f", 0.28);
+        if (columns) {
+          for (let x = 980; x < 1920; x += 150) {
+            const c = ctx.createLinearGradient(x * S, 0, (x + 70) * S, 0);
+            c.addColorStop(0, "rgba(212,168,86,0)");
+            c.addColorStop(0.5, "rgba(212,168,86,0.07)");
+            c.addColorStop(1, "rgba(212,168,86,0)");
+            ctx.fillStyle = c;
+            ctx.fillRect(x * S, 120 * S, 70 * S, 960 * S);
+          }
+        }
+        if (horizon) pyramids(horizon, items, sunX, sunR);
+        dust(900 * S, "#e6c27a");
+        vignette(0.6, 0.4);
+        grain(8);
+      }
+
+      // ---------- MEKSIKA: papel picado bayroqchalari, krem qog'oz ----------
+
+      const FIESTA = ["#f59f00", "#0f9b9b", "#138a52", "#d6332f", "#7b2f8f", "#e6007e", "#c2410c", "#2563eb"];
+
+      function papelPicado(y0, flagW, flagH, alpha = 1) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = "rgba(60,30,20,0.45)";
+        ctx.lineWidth = 1.5 * S;
+        ctx.beginPath();
+        ctx.moveTo(0, (y0 + 4) * S);
+        ctx.quadraticCurveTo(W / 2, (y0 + 14) * S, W, (y0 + 4) * S);
+        ctx.stroke();
+        let i = 0;
+        for (let x = 6; x < 1920; x += flagW + 8) {
+          const sag = 10 * Math.sin((x / 1920) * Math.PI);
+          const top = y0 + 4 + sag;
+          ctx.fillStyle = FIESTA[i++ % FIESTA.length];
+          ctx.beginPath();
+          ctx.moveTo(x * S, top * S);
+          ctx.lineTo((x + flagW) * S, top * S);
+          ctx.lineTo((x + flagW) * S, (top + flagH) * S);
+          const teeth = 6;
+          for (let t = teeth; t >= 0; t--) ctx.lineTo((x + (flagW * t) / teeth) * S, (top + flagH - (t % 2 ? 0 : 9)) * S);
+          ctx.closePath();
+          ctx.fill();
+          // kesilgan naqsh
+          ctx.save();
+          ctx.globalCompositeOperation = "destination-out";
+          const cx = x + flagW / 2;
+          const cy = top + flagH * 0.45;
+          ctx.beginPath();
+          ctx.moveTo(cx * S, (cy - flagH * 0.2) * S);
+          ctx.lineTo((cx + flagW * 0.2) * S, cy * S);
+          ctx.lineTo(cx * S, (cy + flagH * 0.2) * S);
+          ctx.lineTo((cx - flagW * 0.2) * S, cy * S);
+          ctx.closePath();
+          ctx.fill();
+          for (const [dx, dy] of [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]]) {
+            ctx.beginPath();
+            ctx.arc((cx + dx * flagW) * S, (cy + dy * flagH * 0.8) * S, flagW * 0.06 * S, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+
+      function petals(count) {
+        for (let k = 0; k < count; k++) {
+          ctx.save();
+          ctx.translate(rnd() * W, rnd() * H);
+          ctx.rotate(rnd() * Math.PI);
+          ctx.fillStyle = hexA(FIESTA[k % FIESTA.length], range(0.35, 0.75));
+          ctx.beginPath();
+          ctx.ellipse(0, 0, range(4, 9) * S, range(10, 18) * S, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      function meksika({ bunting = 160, petalCount = 26, dark = false }) {
+        fill(dark ? "#2a1230" : "#fdf3e1");
+        if (!dark) {
+          ctx.fillStyle = "rgba(120,80,40,0.035)";
+          for (let y = 0; y < H; y += 6 * S) ctx.fillRect(0, y, W, 1 * S);
+        }
+        if (bunting) papelPicado(0, bunting * 0.62, bunting, dark ? 0.9 : 1);
+        petals(petalCount);
+        grain(dark ? 8 : 5);
+      }
+
+      // ---------- VATIKAN: bog' rejasi (shag'al, to'q yashil, oltin chiziqlar) ----------
+
+      function gravel(color) {
+        fill(color);
+        ctx.strokeStyle = "rgba(90,70,40,0.07)";
+        ctx.lineWidth = 1 * S;
+        for (let y = 0; y < 1080; y += 7) {
+          ctx.beginPath();
+          ctx.moveTo(0, y * S);
+          for (let x = 0; x <= 1920; x += 60) ctx.lineTo(x * S, (y + Math.sin(x / 140 + y) * 0.8) * S);
+          ctx.stroke();
+        }
+      }
+
+      function giltFrame(inset, color = "rgba(169,133,58,0.85)") {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.4 * S;
+        ctx.strokeRect(inset * S, inset * S, W - inset * 2 * S, H - inset * 2 * S);
+        ctx.lineWidth = 0.8 * S;
+        ctx.strokeRect((inset + 8) * S, (inset + 8) * S, W - (inset + 8) * 2 * S, H - (inset + 8) * 2 * S);
+      }
+
+      function gardenPlan(cx, cy, scale, color) {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.2 * S;
+        const r = 260 * scale;
+        for (const k of [1, 0.72, 0.42, 0.12]) {
+          ctx.beginPath();
+          ctx.arc(cx * S, cy * S, r * k * S, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        for (let a = 0; a < 8; a++) {
+          const t = (a / 8) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo((cx + Math.cos(t) * r * 0.12) * S, (cy + Math.sin(t) * r * 0.12) * S);
+          ctx.lineTo((cx + Math.cos(t) * r * 1.9) * S, (cy + Math.sin(t) * r * 1.9) * S);
+          ctx.stroke();
+        }
+        ctx.strokeRect((cx - r * 1.6) * S, (cy - r * 1.6) * S, r * 3.2 * S, r * 3.2 * S);
+        ctx.restore();
+      }
+
+      function vatikan({ dark = false, plan = null, frame = 34 }) {
+        if (dark) {
+          fill("#1f3b2a");
+          blob(W * 0.7, H * 0.4, 900 * S, "#2c5039", 0.6);
+        } else gravel("#e8ddc6");
+        if (plan) gardenPlan(plan[0], plan[1], plan[2], dark ? "rgba(210,180,108,0.32)" : "rgba(169,133,58,0.4)");
+        giltFrame(frame, dark ? "rgba(210,180,108,0.8)" : "rgba(169,133,58,0.85)");
+        grain(dark ? 7 : 5);
+      }
+
+      // ---------- AVSTRALIYA: shom osmoni, Janubiy Xoch, topografik chiziqlar ----------
+
+      function contours(cx, cy, count, color, scale = 1) {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.2 * S;
+        for (let k = 1; k <= count; k++) {
+          ctx.beginPath();
+          for (let a = 0; a <= 64; a++) {
+            const t = (a / 64) * Math.PI * 2;
+            const rr = k * 34 * scale * (1 + 0.18 * Math.sin(3 * t + k * 0.6) + 0.08 * Math.cos(5 * t - k));
+            const x = cx + Math.cos(t) * rr * 1.4;
+            const y = cy + Math.sin(t) * rr;
+            a ? ctx.lineTo(x * S, y * S) : ctx.moveTo(x * S, y * S);
+          }
+          ctx.closePath();
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function southernCross(x, y, scale) {
+        const stars = [[0, -150], [10, 140], [-95, 10], [90, -15], [40, 50]];
+        stars.forEach(([dx, dy], i) => {
+          const px = (x + dx * scale) * S;
+          const py = (y + dy * scale) * S;
+          blob(px, py, (i === 4 ? 16 : 34) * scale * S, "#ffd98a", 0.5);
+          ctx.fillStyle = "#fff6dc";
+          ctx.beginPath();
+          ctx.arc(px, py, (i === 4 ? 2 : 3.6) * scale * S, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      function avstraliya({ sky = false, sand = false, contour = null, cross = null, starsCount = 900 }) {
+        if (sky) {
+          const g = ctx.createLinearGradient(0, 0, 0, H);
+          g.addColorStop(0, "#0b1a33");
+          g.addColorStop(0.55, "#22375f");
+          g.addColorStop(0.85, "#5b5a7d");
+          g.addColorStop(1, "#c98b6b");
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, W, H);
+          for (let i = 0; i < starsCount * S; i++) {
+            ctx.fillStyle = `rgba(255,250,235,${range(0.2, 0.9)})`;
+            ctx.beginPath();
+            ctx.arc(rnd() * W, rnd() * H * 0.75, (Math.pow(rnd(), 3) * 1.4 + 0.3) * S, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          if (cross) southernCross(cross[0], cross[1], cross[2]);
+          if (contour) contours(contour[0], contour[1], contour[2], "rgba(242,179,61,0.16)", contour[3] ?? 1);
+        } else {
+          fill(sand ? "#f3e6d0" : "#14294a");
+          if (contour) contours(contour[0], contour[1], contour[2], sand ? "rgba(176,104,40,0.22)" : "rgba(242,179,61,0.2)", contour[3] ?? 1);
+        }
+        grain(sky ? 7 : 5);
+      }
+
+      // ---------- Dekor (shaffof PNG) ----------
+
+      function orb(color, core = null, spread = 0.5, strength = 0.7) {
+        const r = Math.min(W, H) / 2;
+        blob(W / 2, H / 2, r, color, strength);
+        blob(W / 2, H / 2, r * spread, color, strength * 0.6);
+        if (core) blob(W / 2, H / 2, r * 0.16, core, 0.4);
+      }
+
+      function neonRing() {
+        const pts = loopPath(W / 2 / S, H / 2 / S, (W / 2 / S) * 0.7, (H / 2 / S) * 0.7, 0, 0.015, 0);
+        tube(pts, "#ff008a", "#6958d5", 9);
+      }
+
+      const ART = {
+        "aura-cover": () => aura([-180, 1260, 520, 980, 900, 560, 2140, -160], { darkSpot: [1580, 230, 330], shade: 0.5 }),
+        "aura-content": () => aura([700, 1320, 1250, 1080, 1600, 820, 2200, 360], { strength: 0.65, shade: 0.35 }),
+        "aura-section": () => aura([-200, 980, 600, 560, 1300, 900, 2150, 420], { strength: 0.85, shade: 0.45 }),
+        "aura-end": () => aura([2120, 1240, 1450, 900, 1000, 560, -200, -120], { strength: 0.9, shade: 0, darkSpot: [380, 220, 300] }),
+        "aura-orb-cyan": () => orb("#22d3ee", null, 0.42, 0.55),
+        "aura-orb-orange": () => orb("#fb923c", null, 0.42, 0.55),
+
+        "neon-cover": () => neon(1530, 600, 0.88, { count: 6, center: 0.2, shade: 0.92 }),
+        "neon-content": () => neon(2010, 1090, 0.78, { count: 4, alpha: 0.45, center: 0 }),
+        "neon-section": () => neon(1780, 930, 0.85, { count: 5, alpha: 0.6, center: 0, shade: 0.6 }),
+        "neon-end": () => neon(960, 620, 1.12, { count: 7, center: 0.92, centerR: 600 }),
+        "neon-ring": () => neonRing(),
+        "neon-orb": () => orb("#ff008a", null, 0.4, 0.5),
+
+        "kinetic-cover": () => kinetic({ bump: [1460, 860], radius: 430 }),
+        "kinetic-content": () => kinetic({ bump: [1820, 1020], radius: 300, amp: 0.7, gridAlpha: 0.16, spacing: 72 }),
+        "kinetic-section": () => kinetic({ bump: [1730, 880], radius: 360, gridAlpha: 0.24 }),
+        "kinetic-end": () => kinetic({ bump: [960, 1010], radius: 470, amp: 1.2 }),
+        "kinetic-orb": () => orb("#bef202", "#f7ffd6", 0.3, 0.6),
+
+        "aurora-cover": () => aurora({ fx: 1, fy: 0, reach: 0.8, alpha: 0.7 }),
+        "aurora-content": () => aurora({ fx: 1, fy: 0, reach: 0.42, alpha: 0.5 }),
+        "aurora-section": () => aurora({ fx: 0.15, fy: 0, reach: 0.9, alpha: 0.65 }),
+        "aurora-end": () => aurora({ fx: 0.5, fy: 0, reach: 0.95, alpha: 0.7 }),
+        "aurora-orb-indigo": () => orb("#818cf8", null, 0.45, 0.6),
+        "aurora-orb-sky": () => orb("#7dd3fc", null, 0.45, 0.6),
+
+        "cosmos-cover": () => cosmos({}),
+        "cosmos-content": () => cosmos({ nebula: 0.55, milky: false }),
+        "cosmos-section": () => cosmos({ nebula: 0.85 }),
+        "cosmos-end": () => cosmos({ nebula: 1.1 }),
+        "cosmos-mars": () => planet({ base: ["#f2a07b", "#c1440e", "#5a1a06"], bands: ["#7a2a0c", "#e27b58", "#9c3a12", "#f4b48c"], atmo: "#ff9a6b", craters: 16 }),
+        "cosmos-ice": () => planet({ base: ["#f1f6ff", "#9fb3d1", "#2c3a55"], bands: ["#c9d6ea", "#7d8ca3", "#e8eef7"], atmo: "#9fd3ff", craters: 12 }),
+        "cosmos-giant": () => planet({ base: ["#9be7ff", "#1d6fa5", "#0b1f3a"], bands: ["#0e4c7a", "#7fd3f7", "#2a8fc4", "#c7f0ff"], atmo: "#7cc8ff", ring: true }),
+
+        "misr-cover": () => misr({ horizon: 900, items: [[1220, 760, 520], [1610, 520, 360], [960, 380, 250]], sunX: 1420, sunR: 120 }),
+        "misr-content": () => misr({ horizon: 1050, items: [[1700, 420, 260]], sunX: 1700, sunR: 0 }),
+        "misr-section": () => misr({ columns: true, sunX: 1500 }),
+        "misr-end": () => misr({ horizon: 920, items: [[960, 820, 560], [1380, 460, 300], [560, 460, 300]], sunX: 960, sunR: 150 }),
+        "misr-sun": () => orb("#e0b25c", "#fff1c8", 0.36, 0.7),
+
+        "meksika-cover": () => meksika({ bunting: 128, petalCount: 30 }),
+        "meksika-content": () => meksika({ bunting: 60, petalCount: 10 }),
+        "meksika-section": () => meksika({ bunting: 60, petalCount: 36, dark: true }),
+        "meksika-end": () => meksika({ bunting: 170, petalCount: 44 }),
+
+        "vatikan-cover": () => vatikan({ plan: [1480, 560, 1.1] }),
+        "vatikan-content": () => vatikan({ plan: [1880, 1020, 0.7] }),
+        "vatikan-section": () => vatikan({ dark: true, plan: [1500, 540, 1.0] }),
+        "vatikan-end": () => vatikan({ dark: true, plan: [960, 560, 1.25] }),
+
+        "avstraliya-cover": () => avstraliya({ sky: true, cross: [1480, 420, 1.2], contour: [1500, 1150, 12, 1.4] }),
+        "avstraliya-content": () => avstraliya({ sand: true, contour: [1880, 1060, 9, 1.1] }),
+        "avstraliya-section": () => avstraliya({ contour: [1650, 820, 12, 1.3] }),
+        "avstraliya-end": () => avstraliya({ sky: true, cross: [960, 330, 1.0], contour: [960, 1250, 14, 1.5] }),
+        "avstraliya-star": () => orb("#ffcf6e", "#fff6dc", 0.3, 0.6),
+
+        "editorial-paper": () => editorial(false),
+        "editorial-ink": () => editorial(true),
+      };
+
+      ART[ASSET]();
+      document.title = "done";
+    </script>
+  </body>
+</html>

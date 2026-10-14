@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="uz">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Talaba Yordamchi</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <main id="view" aria-live="polite">
+        
+      </main>
+
+      <button id="fallback-main" class="btn btn-main" hidden></button>
+
+      <nav id="tabbar" class="tabbar" aria-label="Boʻlimlar" hidden>
+        <button class="tab" data-tab="home">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z" /></svg>
+          <span>Asosiy</span>
+        </button>
+        <button class="tab" data-tab="orders">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm6 1.5V9h4.5M9 13h6M9 17h6" /></svg>
+          <span>Buyurtmalar</span>
+        </button>
+        <button class="tab" data-tab="balance">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h13v4M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2zm13 7h.01" /></svg>
+          <span>Hisob</span>
+        </button>
+      </nav>
+
+      <div id="toast" class="toast" role="status" hidden></div>
+    </div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
