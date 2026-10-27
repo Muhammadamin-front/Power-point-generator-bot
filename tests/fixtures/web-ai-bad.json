@@ -1,0 +1,264 @@
+{
+ "subtitle": "Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha Juda uzun sarlavha ",
+ "brand": "</script><img src=x onerror=alert(1)></script><img src=x onerror=alert(1)></script><img src=x onerror=alert(1)>",
+ "readouts": [
+  {
+   "label": "IT eksporti",
+   "value": "~1 mlrd $",
+   "note": "2024-yil, taxminiy"
+  },
+  {
+   "label": "Internet foydalanuvchilari",
+   "value": "~80%",
+   "note": "aholining ulushi"
+  },
+  {
+   "label": "IT Park rezidentlari",
+   "value": "~2 000",
+   "note": "kompaniya"
+  }
+ ],
+ "overview": {
+  "heading": "Raqamli iqtisodiyot nima?",
+  "lead": "Raqamli iqtisodiyot — ishlab chiqarish, savdo va xizmatlarda axborot texnologiyalari va maʼlumotlar asosiy resursga aylangan iqtisodiy faoliyat. Oʻzbekistonda u 2020-yildan boshlab «Raqamli Oʻzbekiston — 2030» strategiyasi bilan tezlashdi.",
+  "pull": "Maʼlumot — yangi neft, tarmoq — yangi yoʻl.",
+  "facts": [
+   {
+    "value": "2030",
+    "label": "Raqamli Oʻzbekiston strategiyasi muddati"
+   },
+   {
+    "value": "~80%",
+    "label": "Aholining internetdan foydalanish darajasi (taxminan)"
+   },
+   {
+    "value": "5G",
+    "label": "Yirik shaharlarda joriy etilmoqda"
+   },
+   {
+    "value": "e-gov",
+    "label": "Davlat xizmatlarining katta qismi onlayn"
+   }
+  ],
+  "image_query": "digital economy city night"
+ },
+ "numbers": {
+  "heading": "Raqamlarda raqamli iqtisodiyot",
+  "lead": "Soʻnggi besh yilda internet, toʻlov tizimlari va IT eksporti bir necha barobar oʻsdi.",
+  "stats": [
+   {
+    "value": -5e+307,
+    "prefix": "~",
+    "suffix": " mlrd $",
+    "decimals": 1,
+    "label": "IT xizmatlari eksporti",
+    "note": "2024-yil, taxminiy"
+   },
+   {
+    "value": 80,
+    "prefix": "~",
+    "suffix": "%",
+    "decimals": 99,
+    "label": "Internet foydalanuvchilari ulushi",
+    "note": "2024-yil"
+   },
+   {
+    "value": 2000,
+    "prefix": "~",
+    "suffix": "",
+    "decimals": 0,
+    "label": "IT Park rezident kompaniyalari",
+    "note": "2024-yil oxiri"
+   },
+   {
+    "value": 30,
+    "prefix": "",
+    "suffix": " mln+",
+    "decimals": 0,
+    "label": "Faol bank kartalari",
+    "note": "Markaziy bank, taxminiy"
+   }
+  ],
+  "chart": {
+   "title": "IT xizmatlari eksporti, mlrd dollar",
+   "unit": "mlrd $",
+   "note": "Manba: IT Park, Axborot texnologiyalari vazirligi · taxminiy",
+   "bars": [
+    {
+     "label": "A",
+     "value": -5,
+     "highlight": true
+    },
+    {
+     "label": "B",
+     "value": 1e+308,
+     "highlight": true
+    },
+    {
+     "label": "",
+     "value": 3,
+     "highlight": false
+    }
+   ]
+  }
+ },
+ "timeline": {
+  "heading": "Raqamlashtirish yoʻli",
+  "lead": "",
+  "steps": [
+   {
+    "year": "1995",
+    "title": "Internetning kelishi",
+    "text": "Oʻzbekistonda birinchi internet provayderlar paydo boʻldi, tarmoq asosan universitetlar va tashkilotlarda ishladi."
+   },
+   {
+    "year": "2012",
+    "title": "Mobil internet",
+    "text": "3G va keyinchalik 4G tarmoqlari aholining katta qismiga internetni yetkazdi."
+   }
+  ]
+ },
+ "concepts": {
+  "heading": "Asosiy tushunchalar",
+  "lead": "Toʻrtta tushuncha raqamli iqtisodiyotni tushunish kaliti.",
+  "cards": [
+   {
+    "label": "Texnologiya",
+    "word": "Platforma",
+    "meaning": "Xaridor va sotuvchini bogʻlaydi",
+    "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   {
+    "label": "Maʼlumot",
+    "word": "Katta maʼlumotlar",
+    "meaning": "Qarorlar uchun yangi xomashyo",
+    "text": "Katta hajmdagi maʼlumotni tahlil qilish orqali kompaniyalar talabni oldindan bashorat qiladi va xizmatni shaxsiylashtiradi."
+   },
+   {
+    "label": "Moliya",
+    "word": "Fintex",
+    "meaning": "Toʻlov va kredit onlayn",
+    "text": "Mobil ilovalar orqali toʻlov, oʻtkazma va mikrokredit bir necha soniyada amalga oshadi, naqd pulga ehtiyoj kamayadi."
+   },
+   {
+    "label": "Mehnat",
+    "word": "Masofaviy ish",
+    "meaning": "Ofissiz va chegarasiz",
+    "text": "IT mutaxassislar xorijiy mijozlar uchun Oʻzbekistondan turib ishlaydi — bu xizmatlar eksportining asosiy shakli."
+   }
+  ],
+  "keywords": [
+   "Platforma",
+   "Fintex",
+   "Katta maʼlumotlar",
+   "Bulutli xizmatlar",
+   "Sunʼiy intellekt",
+   "Kiberxavfsizlik",
+   "E-commerce"
+  ]
+ },
+ "problems": {
+  "heading": "Qiyinchiliklar",
+  "lead": "Tez oʻsish bilan birga infratuzilma, kadrlar va xavfsizlik muammolari ham paydo boʻladi.",
+  "items": [
+   {
+    "figure": "~40%",
+    "title": "Hududlar orasidagi tafovut",
+    "text": "Qishloq joylarda internet tezligi va sifati shaharlarga nisbatan sezilarli past."
+   },
+   {
+    "figure": "IT kadrlar",
+    "title": "Mutaxassislar tanqisligi",
+    "text": "Talab oʻsishi universitet tayyorlayotgan kadrlar sonidan oldinda; koʻp mutaxassis chet elga ketadi."
+   },
+   {
+    "figure": "Xavfsizlik",
+    "title": "Kiberxavfsizlik xatarlari",
+    "text": "Raqamli xizmatlar kengaygani sari shaxsiy maʼlumotlarni himoya qilish va firibgarlikka qarshi kurash muhimlashadi."
+   },
+   {
+    "figure": "Raqamli savodxonlik",
+    "title": "Foydalanuvchilar tayyorgarligi",
+    "text": "Keksa avlod va chekka hududlarda raqamli xizmatlardan foydalanish koʻnikmasi hali yetarli emas."
+   }
+  ]
+ },
+ "future": {
+  "heading": "2030 sari yoʻl",
+  "lead": "Strategiya infratuzilma, kadrlar va eksportni birga rivojlantirishni koʻzlaydi.",
+  "items": [
+   {
+    "tag": "Infratuzilma",
+    "title": "5G va maʼlumotlar markazlari",
+    "text": "Yirik shaharlarda 5G va milliy bulutli xizmatlar kengayadi."
+   },
+   {
+    "tag": "Kadrlar",
+    "title": "Million dasturchi",
+    "text": "Yoshlarni dasturlashga oʻrgatish kengaytiriladi, IT taʼlim hududlarga yetkaziladi."
+   },
+   {
+    "tag": "Eksport",
+    "title": "IT eksportini oshirish",
+    "text": "Xizmatlar eksporti bir necha barobar oshishi rejalashtirilgan."
+   },
+   {
+    "tag": "Davlat",
+    "title": "Toʻliq onlayn xizmatlar",
+    "text": "Davlat xizmatlarining deyarli barchasi bir portal orqali koʻrsatiladi."
+   }
+  ]
+ },
+ "compare": {
+  "heading": "Oʻzbekiston va Qozogʻiston",
+  "lead": "Ikki qoʻshni mamlakatning raqamli koʻrsatkichlari. Qator ustiga olib boring — necha barobar farq.",
+  "left": "Oʻzbekiston",
+  "right": "Qozogʻiston",
+  "rows": [
+   {
+    "label": "x",
+    "left": "",
+    "right": "y",
+    "left_value": 0,
+    "right_value": 0
+   }
+  ],
+  "similar": [
+   "Yosh aholi va tez oʻsayotgan IT bozor",
+   "Davlat strategiyalari bilan qoʻllab-quvvatlanishi"
+  ],
+  "different": [
+   "Toʻlov ekotizimi: Qozogʻistonda yagona superilova yetakchi",
+   "Oʻzbekistonda aholi ikki baravarga yaqin koʻp"
+  ],
+  "lessons_title": "Oʻzbekiston uchun xulosalar",
+  "lessons": [
+   {
+    "title": "Yagona ekotizim",
+    "text": "Toʻlov va xizmatlarni bitta qulay ilovada jamlash foydalanuvchini tez oʻstiradi."
+   },
+   {
+    "title": "Kadrlarga sarmoya",
+    "text": "Taʼlimga kiritilgan mablagʻ IT eksportida eng tez qaytadi."
+   },
+   {
+    "title": "Hududlarga internet",
+    "text": "Infratuzilma tafovutini kamaytirmasdan raqamli oʻsish bir tekis boʻlmaydi."
+   }
+  ]
+ },
+ "conclusion": {
+  "heading": "Xulosa",
+  "points": [
+   "Raqamli iqtisodiyot Oʻzbekistonda strategik yoʻnalishga aylandi va IT eksporti tez oʻsmoqda.",
+   "Asosiy cheklovlar — hududiy tafovut, kadrlar tanqisligi va kiberxavfsizlik.",
+   "Infratuzilma, taʼlim va eksportni birga rivojlantirish 2030-yil maqsadlariga erishish kalitidir."
+  ]
+ },
+ "sources": [
+  "«Raqamli Oʻzbekiston — 2030» strategiyasi, Oʻzbekiston Respublikasi Prezidentining farmoni (lex.uz)",
+  "IT Park Uzbekistan — rasmiy hisobotlar (it-park.uz)",
+  "Oʻzbekiston Respublikasi Statistika agentligi (stat.uz)",
+  "Markaziy bank hisobotlari (cbu.uz)"
+ ]
+}

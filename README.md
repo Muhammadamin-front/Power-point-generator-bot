@@ -6,7 +6,7 @@ Talabalar uchun **taqdimot (PowerPoint), referat, mustaqil ish, kurs ishi va tes
 
 | Xizmat | Fayl | Nima bor |
 |---|---|---|
-| 📊 Taqdimot | `.pptx` | 6 ta oddiy + **6 ta premium animatsiyali** dizayn, 7 xil slayd turi (ro'yxat, kartalar, raqamlar, vaqt chizig'i, taqqoslash, iqtibos), reja, xulosa, adabiyotlar, ma'ruzachi uchun izohlar, ixtiyoriy rasmlar |
+| 📊 Taqdimot | `.pptx` yoki **`.html` (Premium 3D veb)** | **Premium 3D veb-taqdimot** (sayt koʻrinishida), 6 ta oddiy + 6 ta animatsiyali `.pptx` dizayn, ixtiyoriy ranglar va shriftlar, 7 xil slayd turi (ro'yxat, kartalar, raqamlar, vaqt chizig'i, taqqoslash, iqtibos), reja, xulosa, adabiyotlar, ma'ruzachi uchun izohlar, ixtiyoriy rasmlar |
 | 📄 Referat | `.docx` | Titul varaq, reja, kirish, 3–4 bo'lim, xulosa, adabiyotlar |
 | 📝 Mustaqil ish | `.docx` | Referatdan chuqurroq, 4–5 bo'lim |
 | 🎓 Kurs ishi | `.docx` | Boblar va paragraflar, **sahifa raqamli mundarija**, kirishda dolzarblik/maqsad/vazifalar/obyekt/predmet |
@@ -17,8 +17,21 @@ Talabalar uchun **taqdimot (PowerPoint), referat, mustaqil ish, kurs ishi va tes
 - **Mini App:** xizmat tanlash, buyurtma berish, jonli holat, buyurtmalar tarixi, yuklab olish, balans. Telegram mavzusiga (yorug'/qorong'i) o'zi moslashadi
 - **To'lov:** Click / Payme (Uzcard, Humo, Visa — avtomatik, Telegram Payments orqali), Telegram Stars va karta o'tkazmasi (chek → admin tasdiqlaydi)
 - **Sotuv:** bot va Mini App'da premium shablonlar vitrinasi, har bir shablonning yuklab olinadigan namunasi, promokodlar, to'lovlar tarixi, ixtiyoriy majburiy obuna
-- **Bonuslar:** yangi foydalanuvchiga boshlang'ich bonus, do'st taklif qilganlik uchun referal bonus
+- **Bonuslar:** yangi foydalanuvchiga boshlang'ich bonus (eng arzon buyurtmadan kam qilib qo'ying), taklif qilingan do'st birinchi marta pul to'laganda taklif qilganga referal bonus
+- **Himoya:** promokodni topishga urinish (5 ta xato → 15 daqiqa blok), buyurtma va to'lov havolalariga tezlik cheklovi; botga yozilgan oddiy matn mavzu sifatida qabul qilinib, xizmat tanlash tugmalari chiqadi
 - **Ishonchlilik:** buyurtma bajarilmasa pul avtomatik qaytadi; server qayta ishga tushsa tugallanmagan buyurtmalar davom etadi; bitta to'lov ikki marta hisoblanmaydi
+
+## Premium 3D veb-taqdimot
+
+Buyurtma berilganda foydalanuvchi **bitta `.html` fayl** (ikki marta bosib ochiladi, internetsiz ishlaydi) va **onlayn havola** oladi. Dizayn «Yaponiya iqtisodiyoti» taqdimoti uslubida: yon panel, 3D mato toʻri, suyuqlik/zarrachalar effektlari, sticky-scroll tarix chizigʻi, 3D aylanuvchi kartalar, jonli grafiklar, marmar fon, «Rahmat!» ekrani. ← → — qadamlar, F — toʻliq ekran.
+
+- **Titul (birinchi) sahifa** foydalanuvchi kiritgan mavzu, ism-familiya, guruh (va oliygoh, oʻqituvchi)dan yaratiladi — AI emas.
+- **AI faqat mazmun yozadi** (`src/ai/webdeck.js`): dizayn va effektlar tayyor shablonda. Effektlar `Desktop/Prompt` dagi promptlardan yasalgan komponentlar (flow-field, card-flip, parallax, aurora, count-number...). AI promptiga bu effektlarning qaysi bo'limda ishlashi tushuntirilgan, shuning uchun mazmun ularga moslab yoziladi.
+- **Ranglar**: 6 ta tayyor palitra yoki ikki ixtiyoriy rang; matn kontrasti (WCAG AA) avtomatik saqlanadi. **Shriftlar**: 10 ta bepul (OFL) shrift, oʻzbek lotin/kirill, rus va ingliz harflari tekshirilgan (`oʻ gʻ ʼ қ ғ ҳ ў`); faqat tanlangani faylga joylanadi. Oddiy `.pptx` uchun ham ikki rang va Office shriftlari tanlanadi (animatsiyali `.pptx` ranglari tayyor, oʻzgarmaydi).
+- Narx: [src/services.js](src/services.js) → `webOptions` (AI xarajati ≈ $0.3–0.5).
+- Onlayn koʻrish: `/v/<imzolangan-token>` (qat'iy CSP bilan, fayl saqlanadigan muddat davomida). Jonli namuna: `/samples/web`.
+
+Shablonni oʻzgartirish: `web/` (React + Vite + Tailwind). Yigʻish: `npm run web:build` → `assets/web/template.html` (server Vite'siz ishlaydi; natija repoga qoʻshiladi). Dizayn tokenlari `web/src/index.css` va `web/src/theme.ts`, mazmun turlari `web/src/types.ts` (server sxemasi `src/ai/webdeck.js` bilan birga oʻzgartiriladi). `cd web && npm run dev` namunaviy mazmun bilan ishlaydi.
 
 ## Premium animatsiyali shablonlar
 
@@ -90,6 +103,14 @@ Istalgan VPS (Ubuntu + nginx + certbot) yoki Railway / Render kabi platforma mos
 ```bash
 NODE_ENV=production pm2 start npm --name talaba-bot -- start
 ```
+
+## Testlar
+
+```bash
+npm test     # soxta AI va soxta Telegram bilan: to'lovlar, referal, limitlar, veb-taqdimot, brauzerda ochilishi
+```
+
+Brauzer tekshiruvi uchun Google Chrome kerak (bo'lmasa shu qism o'tkazib yuboriladi).
 
 ## Admin buyruqlari (botda)
 

@@ -1,11 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Bot, GrammyError, InlineKeyboard, InputFile } from "grammy";
+import { viewToken } from "./auth.js";
 import { ROOT, config } from "./config.js";
 import {
   AppError,
   activeUserIds,
   addBalance,
+  addPayment,
   attachReceipt,
   countReferrals,
   createPromo,
@@ -21,6 +23,7 @@ import {
 } from "./db.js";
 import { PREMIUM } from "./generators/premium/templates.js";
 import { parsePaymentPayload } from "./payments.js";
+import { RateLimitError, guardPromo, limits } from "./ratelimit.js";
 import { getSampleDeck } from "./samples.js";
 import { SERVICES, formatSom, getService } from "./services.js";
 
@@ -81,13 +84,26 @@ async function safeSend(userId, send) {
   }
 }
 
+/** Do'st havola orqali qo'shilganda. Bonus unga emas, do'st birinchi marta pul to'laganda beriladi. */
 export async function notifyReferrer(referrerId, newUser) {
   if (config.referralBonus <= 0) return;
   const name = escapeHtml(newUser.first_name || "Doʻstingiz");
   await safeSend(referrerId, () =>
     bot.api.sendMessage(
       referrerId,
-      `🎉 <b>${name}</b> sizning havolangiz orqali qoʻshildi!\nBalansingizga <b>${formatSom(config.referralBonus)}</b> qoʻshildi.`,
+      `🎉 <b>${name}</b> sizning havolangiz orqali qoʻshildi!\nU birinchi marta balansini toʻldirganda sizga <b>${formatSom(config.referralBonus)}</b> qoʻshiladi.`,
+      { parse_mode: "HTML" },
+    ),
+  );
+}
+
+/** Taklif qilingan do'st birinchi marta pul to'lab, bonus berilganda. */
+async function notifyReferralReward(referrerId, friendId) {
+  const name = escapeHtml(getUser(friendId)?.first_name || "Doʻstingiz");
+  await safeSend(referrerId, () =>
+    bot.api.sendMessage(
+      referrerId,
+      `🎁 <b>${name}</b> balansini toʻldirdi — balansingizga <b>${formatSom(config.referralBonus)}</b> qoʻshildi!`,
       { parse_mode: "HTML" },
     ),
   );
@@ -189,7 +205,7 @@ async function showInvite(ctx) {
     "Referat, taqdimot va kurs ishlarini bir necha daqiqada tayyorlab beradigan bot 👇",
   )}`;
   await ctx.reply(
-    `👥 Doʻstlaringizni taklif qiling va har biri uchun <b>${formatSom(config.referralBonus)}</b> oling!\n\n` +
+    `👥 Doʻstlaringizni taklif qiling: har bir doʻstingiz birinchi marta balansini toʻldirganda <b>${formatSom(config.referralBonus)}</b> olasiz!\n\n` +
       `Sizning havolangiz:\n<code>${link}</code>\n\nTaklif qilganlar: <b>${count}</b> ta`,
     { parse_mode: "HTML", reply_markup: new InlineKeyboard().url("📤 Ulashish", share) },
   );
@@ -217,13 +233,13 @@ bot.command("promo", async (ctx) => {
   const code = ctx.match?.trim();
   if (!code) return ctx.reply("Promokodni shunday yuboring: /promo KOD");
   try {
-    const { amount, balance } = redeemPromo(ctx.from.id, code);
+    const { amount, balance } = guardPromo(ctx.from.id, () => redeemPromo(ctx.from.id, code));
     await ctx.reply(`🎉 Promokod qabul qilindi! Balansga <b>${formatSom(amount)}</b> qoʻshildi.\n💰 Balans: <b>${formatSom(balance)}</b>`, {
       parse_mode: "HTML",
       reply_markup: new InlineKeyboard().webApp("📱 Buyurtma berish", appUrl()),
     });
   } catch (error) {
-    if (!(error instanceof AppError)) throw error;
+    if (!(error instanceof AppError || error instanceof RateLimitError)) throw error;
     await ctx.reply(`❌ ${error.message}`);
   }
 });
@@ -275,7 +291,8 @@ bot.on("message:successful_payment", async (ctx) => {
   ensureUser(ctx.from);
   try {
     const note = payment.provider_payment_charge_id ? `${parsed.note} · ${payment.provider_payment_charge_id}` : parsed.note;
-    const balance = addBalance(ctx.from.id, parsed.som, parsed.kind, payment.telegram_payment_charge_id, note);
+    const { balance, referrerId } = addPayment(ctx.from.id, parsed.som, parsed.kind, payment.telegram_payment_charge_id, note);
+    if (referrerId) notifyReferralReward(referrerId, ctx.from.id).catch(() => {});
     await ctx.reply(`✅ Toʻlov qabul qilindi! Balansga <b>${formatSom(parsed.som)}</b> qoʻshildi.\n💰 Balans: <b>${formatSom(balance)}</b>`, {
       parse_mode: "HTML",
       reply_markup: new InlineKeyboard().webApp("📱 Buyurtma berish", appUrl()),
@@ -339,7 +356,8 @@ bot.callbackQuery(/^topup:(ok|no):(\d+)$/, async (ctx) => {
   const result = resolveTopup(Number(ctx.match[2]), approve, ctx.from.id);
   if (!result) return ctx.answerCallbackQuery({ text: "Bu toʻlov allaqachon koʻrib chiqilgan" });
 
-  const { topup, balance } = result;
+  const { topup, balance, referrerId } = result;
+  if (referrerId) notifyReferralReward(referrerId, topup.user_id).catch(() => {});
   await ctx.answerCallbackQuery({ text: approve ? "Tasdiqlandi" : "Rad etildi" });
   const status = approve ? `✅ Tasdiqlandi (${escapeHtml(ctx.from.first_name)})` : `❌ Rad etildi (${escapeHtml(ctx.from.first_name)})`;
   await ctx
@@ -479,31 +497,71 @@ bot.command("add", async (ctx) => {
   }
 });
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Xabarni nusxalaydi; Telegram limitiga (429) tushsa, aytilgan vaqtcha kutib qayta urinadi. */
+async function copyTo(userId, fromChatId, messageId) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await safeSend(userId, () => bot.api.copyMessage(userId, fromChatId, messageId));
+    } catch (error) {
+      const wait = error instanceof GrammyError && error.error_code === 429 ? error.parameters?.retry_after : 0;
+      if (!wait) return null;
+      await sleep(wait * 1000);
+    }
+  }
+  return null;
+}
+
+// Yuborish daqiqalar davom etadi. grammY yangilanishlarni ketma-ket ishlagani uchun, handler ichida kutib turilsa,
+// bot shu vaqt davomida hech narsaga (jumladan to'lovlarning pre_checkout so'roviga) javob bera olmaydi.
+// Shuning uchun yuborish handlerdan alohida, fonda bajariladi.
+let broadcasting = false;
+
 bot.command("broadcast", async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const source = ctx.message.reply_to_message;
   if (!source) return ctx.reply("Yuboriladigan xabarga javob (reply) qilib /broadcast yozing.");
+  if (broadcasting) return ctx.reply("Oldingi xabar hali yuborilmoqda. Tugashini kuting.");
+  const adminChat = ctx.chat.id;
   const ids = activeUserIds();
-  await ctx.reply(`📤 ${ids.length} ta foydalanuvchiga yuborilmoqda...`);
-  let sent = 0;
-  for (const userId of ids) {
-    const ok = await safeSend(userId, () => bot.api.copyMessage(userId, ctx.chat.id, source.message_id)).catch(() => null);
-    if (ok) sent += 1;
-    await new Promise((resolve) => setTimeout(resolve, 50)); // Telegram limiti: ~30 xabar/soniya
-  }
-  await ctx.reply(`✅ Yuborildi: ${sent} / ${ids.length}`);
+  broadcasting = true;
+  (async () => {
+    try {
+      await bot.api.sendMessage(adminChat, `📤 ${ids.length} ta foydalanuvchiga yuborilmoqda...`);
+      let sent = 0;
+      for (const userId of ids) {
+        if (await copyTo(userId, adminChat, source.message_id)) sent += 1;
+        await sleep(50); // Telegram limiti: ~30 xabar/soniya
+      }
+      await bot.api.sendMessage(adminChat, `✅ Yuborildi: ${sent} / ${ids.length}`);
+    } catch (error) {
+      console.error("Broadcast xatosi:", error);
+      await bot.api.sendMessage(adminChat, "❌ Yuborish xato bilan toʻxtadi. Server logini tekshiring.").catch(() => {});
+    } finally {
+      broadcasting = false;
+    }
+  })();
 });
 
 // ---------- Buyurtma natijalari ----------
 
 export async function sendOrderFile(order) {
   const service = getService(order.service);
-  const caption = `${service.icon} <b>${service.title}</b>\n📌 ${escapeHtml(order.topic)}\n${order.stage?.startsWith("Tayyor · ") ? `📄 ${escapeHtml(order.stage.replace("Tayyor · ", ""))}\n` : ""}\n✅ Tayyor! Topshirishdan oldin oʻqib chiqing va kerak boʻlsa tahrirlang.`;
+  const detail = order.stage?.startsWith("Tayyor · ") ? `📄 ${escapeHtml(order.stage.replace("Tayyor · ", ""))}\n` : "";
+  const isWeb = order.file_name?.endsWith(".html");
+  const caption = isWeb
+    ? `🌐 <b>Premium 3D taqdimot</b>\n📌 ${escapeHtml(order.topic)}\n${detail}\n✅ Tayyor! Telefonda — pastdagi «Onlayn koʻrish» tugmasi. ` +
+      `Kompyuterda faylni brauzerda (Chrome) oching: <b>F</b> — toʻliq ekran, <b>←</b> <b>→</b> — qadamlar.`
+    : `${service.icon} <b>${service.title}</b>\n📌 ${escapeHtml(order.topic)}\n${detail}\n✅ Tayyor! Topshirishdan oldin oʻqib chiqing va kerak boʻlsa tahrirlang.`;
+  const keyboard = new InlineKeyboard();
+  if (isWeb) keyboard.url("🌐 Onlayn koʻrish", `${config.webAppUrl}/v/${viewToken(order.id)}`).row();
+  keyboard.webApp("➕ Yangi buyurtma", appUrl());
   return safeSend(order.user_id, () =>
     bot.api.sendDocument(order.user_id, new InputFile(order.file_path, order.file_name), {
       caption,
       parse_mode: "HTML",
-      reply_markup: new InlineKeyboard().webApp("➕ Yangi buyurtma", appUrl()),
+      reply_markup: keyboard,
     }),
   );
 }
@@ -521,6 +579,71 @@ export const orderNotifier = {
     ),
 };
 
+// ---------- Tushunilmagan xabarlar ----------
+// Boshqa barcha handlerlardan keyin ro'yxatdan o'tadi: buyruq, to'lov va chek rasmlari bu yerga yetib kelmaydi.
+
+/** Telegram "web_app" tugmasi URL'iga mavzuni qo'shamiz; juda uzun bo'lsa, qo'shmaymiz. */
+const topicHash = (service, topic) => {
+  const encoded = encodeURIComponent(topic);
+  return `service=${service}${encoded.length <= 900 ? `&topic=${encoded}` : ""}`;
+};
+
+const hintAllowed = (userId) => {
+  if (limits.hints.retryAfter(userId)) return false;
+  limits.hints.hit(userId);
+  return true;
+};
+
+bot.on("message:text", async (ctx) => {
+  if (ctx.chat.type !== "private" || !hintAllowed(ctx.from.id)) return;
+  ensureUser(ctx.from);
+  const text = ctx.message.text.trim();
+
+  if (getAwaitingTopup(ctx.from.id)) {
+    return ctx.reply("🧾 Toʻlov chekining <b>rasmini (skrinshotini)</b> yuboring — matn qabul qilinmaydi.", { parse_mode: "HTML" });
+  }
+
+  if (text.startsWith("/")) {
+    return ctx.reply("Bunday buyruq yoʻq. Quyidagi tugmalardan foydalaning yoki /help ni bosing.", { reply_markup: mainMenu() });
+  }
+
+  if (text.length < 3 || text.length > 300) {
+    return ctx.reply(
+      "✍️ Mavzuni 3–300 belgi oraligʻida yozing, masalan: «Raqamli iqtisodiyot». Yoki ilovani oching 👇",
+      { reply_markup: new InlineKeyboard().webApp("📱 Ilovani ochish", appUrl()) },
+    );
+  }
+
+  const shown = text.length > 100 ? `${text.slice(0, 100)}…` : text;
+  const keyboard = new InlineKeyboard();
+  Object.values(SERVICES).forEach((service, i) => {
+    keyboard.webApp(`${service.icon} ${service.title}`, appUrl(topicHash(service.id, text)));
+    if (i % 2 === 1) keyboard.row();
+  });
+  await ctx.reply(`📝 Mavzu: <b>${escapeHtml(shown)}</b>\n\nNima tayyorlaymiz? Xizmatni tanlang 👇`, { parse_mode: "HTML", reply_markup: keyboard });
+});
+
+bot.on(
+  [
+    "message:document",
+    "message:voice",
+    "message:audio",
+    "message:video",
+    "message:video_note",
+    "message:sticker",
+    "message:animation",
+    "message:contact",
+    "message:location",
+  ],
+  async (ctx) => {
+    if (ctx.chat.type !== "private" || !hintAllowed(ctx.from.id)) return;
+    await ctx.reply(
+      "Men faqat matn (mavzu) va toʻlov chekining rasmini qabul qilaman. Buyurtma berish uchun mavzuni yozing yoki ilovani oching 👇",
+      { reply_markup: new InlineKeyboard().webApp("📱 Ilovani ochish", appUrl()) },
+    );
+  },
+);
+
 bot.catch((error) => {
   console.error(`Bot xatosi (update ${error.ctx?.update?.update_id}):`, error.error);
 });
@@ -535,6 +658,7 @@ export async function setupBot() {
     { command: "invite", description: "Doʻstlarni taklif qilish" },
     { command: "help", description: "Yordam va narxlar" },
     { command: "paysupport", description: "Toʻlov boʻyicha yordam" },
+    { command: "terms", description: "Foydalanish shartlari" },
   ]);
   await bot.api.setChatMenuButton({
     menu_button: { type: "web_app", text: "Ochish", web_app: { url: appUrl() } },

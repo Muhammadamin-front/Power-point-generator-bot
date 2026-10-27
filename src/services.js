@@ -1,5 +1,6 @@
 // Xizmatlar katalogi: narxlar (so'mda), hajm variantlari va tavsiflar.
 // Narxlarni o'zgartirish uchun shu faylni tahrirlang.
+import { isWeb } from "./generators/web/meta.js";
 import { isPremium } from "./generators/premium/templates.js";
 
 export const SERVICES = {
@@ -26,6 +27,9 @@ export const SERVICES = {
       { size: 15, price: 11500 },
       { size: 20, price: 14000 },
     ],
+    // Premium 3D veb-taqdimot (bitta .html fayl + onlayn havola). Hajm — bo'limlar soni, AI sarfi doimiy.
+    // Narxni shu yerda o'zgartiring (AI xarajati ~$0.3–0.5 ≈ 4–6 ming so'm).
+    webOptions: [{ size: 9, price: 15000 }],
   },
   referat: {
     id: "referat",
@@ -102,7 +106,11 @@ export function getService(id) {
 
 export function priceFor(serviceId, size, theme) {
   const service = getService(serviceId);
-  const options = service?.premiumOptions && isPremium(theme) ? service.premiumOptions : service?.options;
+  const options = isWeb(theme)
+    ? service?.webOptions
+    : service?.premiumOptions && isPremium(theme)
+      ? service.premiumOptions
+      : service?.options;
   const option = options?.find((o) => o.size === size);
   return option ? option.price : null;
 }

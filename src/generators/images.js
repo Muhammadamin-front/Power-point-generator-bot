@@ -25,6 +25,30 @@ async function fetchImage(query, [width, height]) {
   return `image/jpeg;base64,${buffer.toString("base64")}`;
 }
 
+/**
+ * Veb-taqdimotning birinchi bo'limi uchun bitta keng (landshaft) rasm: data-URL yoki "" (kalit yo'q / topilmadi).
+ * Veb-taqdimot ichiga joylangani uchun hajmi ~300 KB atrofida tutiladi.
+ */
+export async function fetchLandscapeImage(query) {
+  if (!config.pexelsKey || !query) return "";
+  try {
+    const url = new URL("https://api.pexels.com/v1/search");
+    url.searchParams.set("query", query);
+    url.searchParams.set("per_page", "3");
+    url.searchParams.set("orientation", "landscape");
+    const search = await fetch(url, { headers: { Authorization: config.pexelsKey }, signal: AbortSignal.timeout(10_000) });
+    if (!search.ok) return "";
+    const photo = (await search.json()).photos?.[0];
+    if (!photo?.src?.original) return "";
+    const image = await fetch(`${photo.src.original}?auto=compress&cs=tinysrgb&fit=crop&w=1800&h=1100`, { signal: AbortSignal.timeout(20_000) });
+    if (!image.ok) return "";
+    const buffer = Buffer.from(await image.arrayBuffer());
+    return buffer.length > 1_500_000 ? "" : `data:image/jpeg;base64,${buffer.toString("base64")}`;
+  } catch {
+    return "";
+  }
+}
+
 /** "bullets" turidagi slaydlar uchun rasmlar: { slaydIndeksi: base64 }. */
 export async function fetchSlideImages(slides, kind = "standard") {
   if (!config.pexelsKey) return {};

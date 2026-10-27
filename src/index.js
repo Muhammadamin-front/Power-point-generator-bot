@@ -17,6 +17,13 @@ const { PREMIUM_IDS } = await import("./generators/premium/templates.js");
 const { FILES_DIR } = await import("./pipeline.js");
 const { resumeQueue, setNotifier } = await import("./queue.js");
 const { createServer } = await import("./server.js");
+const { SERVICES } = await import("./services.js");
+
+// Boshlang'ich bonus eng arzon buyurtmadan kam bo'lmasa, har bir yangi akkaunt bepul buyurtma oladi.
+const cheapest = Math.min(...Object.values(SERVICES).flatMap((s) => [...s.options, ...(s.premiumOptions ?? [])].map((o) => o.price)));
+if (config.startBonus >= cheapest) {
+  console.warn(`⚠️  START_BONUS (${config.startBonus}) eng arzon buyurtma narxidan (${cheapest}) kam emas — yangi akkauntlar bepul buyurtma olishi mumkin.`);
+}
 
 const me = await setupBot();
 setNotifier(orderNotifier);

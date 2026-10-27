@@ -1212,3 +1212,75 @@ details[open].group > summary {
     transition: none !important;
   }
 }
+
+/* Ranglar tanlash */
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.swatch {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+  text-align: center;
+}
+
+.swatch .dots {
+  display: flex;
+  height: 44px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px transparent, 0 1px 3px rgba(0, 0, 0, 0.12);
+  transition: box-shadow var(--t) var(--ease);
+}
+
+.swatch .dots i:first-child {
+  flex: 2;
+  background: var(--a);
+}
+
+.swatch .dots i:last-child {
+  flex: 1;
+  background: var(--b);
+}
+
+.swatch[aria-checked="true"] .dots {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+}
+
+.swatch small {
+  font-size: var(--fs-xs, 12px);
+  color: var(--muted);
+}
+
+.swatch[aria-checked="true"] small {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.color-input {
+  margin-left: auto;
+  margin-right: 14px;
+  width: 54px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.font-preview {
+  margin-top: 8px;
+}

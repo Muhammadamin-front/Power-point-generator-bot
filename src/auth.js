@@ -44,6 +44,9 @@ export function fileToken(orderId, ttlSeconds = 3600) {
   return `${value}.${sign(value)}`;
 }
 
+/** Onlayn ko'rish havolasi uchun uzoq muddatli token (fayl saqlanadigan muddatga teng; yuklab olish havolasi — 1 soat). */
+export const viewToken = (orderId) => fileToken(orderId, config.fileTtlDays * 24 * 60 * 60);
+
 /** Token to'g'ri va muddati o'tmagan bo'lsa buyurtma ID'sini qaytaradi. */
 export function verifyFileToken(token) {
   const [orderId, expires, signature] = String(token).split(".");

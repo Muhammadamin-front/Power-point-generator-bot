@@ -98,7 +98,10 @@ const som = (amount) => `${groupDigits(amount)} soʻm`;
 const service = (id) => state.config.services.find((s) => s.id === id);
 const stepsFor = (id) => STEPS[id] ?? STEPS.document;
 const premiumTemplate = (id) => state.config.premium.find((t) => t.id === id);
-const sizeOptions = (s, tier) => (tier === "premium" && s.premiumOptions ? s.premiumOptions : s.options);
+const WEB_ID = "web3d";
+const sizeOptions = (s, tier) =>
+  tier === "web" && s.webOptions ? s.webOptions : tier === "premium" && s.premiumOptions ? s.premiumOptions : s.options;
+const hasWeb = (s) => Boolean(s.webOptions && state.config.web);
 
 function haptic(type = "light") {
   try {
@@ -315,7 +318,7 @@ function homeView() {
               ${tile("gift", "#F08C00")}
               <span class="row-main">
                 <span class="row-title">Doʻstlarni taklif qiling</span>
-                <span class="row-sub">Har bir doʻstingiz uchun +${som(config.referralBonus)}</span>
+                <span class="row-sub">Doʻstingiz birinchi toʻlov qilganda +${som(config.referralBonus)}</span>
               </span>
               ${icon("chevron", "chevron")}
             </button>
@@ -433,7 +436,7 @@ function balanceView() {
               ${tile("gift", "#F08C00")}
               <span class="row-main">
                 <span class="row-title">Havolani ulashish</span>
-                <span class="row-sub">Har bir doʻst uchun +${som(config.referralBonus)} · taklif qilganlar: ${me.referrals}</span>
+                <span class="row-sub">Doʻst birinchi toʻlov qilganda +${som(config.referralBonus)} · taklif qilganlar: ${me.referrals}</span>
               </span>
               ${icon("chevron", "chevron")}
             </button>
@@ -505,23 +508,33 @@ function newForm(serviceId, presetTheme) {
   try {
     last = JSON.parse(localStorage.getItem("lastForm") || "{}");
   } catch {}
-  const theme = presetTheme ?? last.theme ?? state.config.premium?.[0]?.id ?? state.config.themes[0].id;
-  const tier = premiumTemplate(theme) ? "premium" : "standard";
+  const web = hasWeb(s);
+  let theme = presetTheme ?? last.theme ?? (web ? WEB_ID : (state.config.premium?.[0]?.id ?? state.config.themes[0].id));
+  if (theme === WEB_ID && !web) theme = state.config.premium?.[0]?.id ?? state.config.themes[0].id;
+  const tier = theme === WEB_ID ? "web" : premiumTemplate(theme) ? "premium" : "standard";
+  const preset = state.config.colorPresets?.find((p) => p.id === last.colorPreset) ?? state.config.colorPresets?.[0];
   return {
     service: serviceId,
     topic: "",
     subject: last.subject ?? "",
-    size: s.defaultSize,
+    size: sizeOptions(s, tier)[0]?.size ?? s.defaultSize,
     lang: last.lang ?? "uz",
     tier,
     theme,
+    colorPreset: last.colorPreset === "custom" ? "custom" : (preset?.id ?? "navy"),
+    colors: last.colors ?? { primary: preset?.primary ?? "#1E2D4A", accent: preset?.accent ?? "#C23B22" },
+    fonts: last.fonts ?? { ...(state.config.web?.defaultFonts ?? {}) },
+    pptxFont: last.pptxFont ?? "calibri",
     extra: "",
     profile: { ...Object.fromEntries(PROFILE_FIELDS.map(([key]) => [key, ""])), ...state.me.profile },
   };
 }
 
+// Ism va guruh mavzu yonida alohida kiritiladi; bu yerda qolgan maʼlumotlar
+const EXTRA_PROFILE_FIELDS = PROFILE_FIELDS.filter(([key]) => !["name", "group"].includes(key));
+
 function profileSummary(profile) {
-  return [profile.name, profile.group, profile.university].filter(Boolean).join(" · ");
+  return [profile.university, profile.faculty, profile.teacher].filter(Boolean).join(" · ");
 }
 
 function formView() {
@@ -548,7 +561,18 @@ function formView() {
       <input class="input" id="f-subject" maxlength="120" aria-label="Fan nomi" placeholder="Fan nomi (ixtiyoriy)" value="${esc(f.subject)}" />
     </div>
 
-    <h2 class="group-title">Hajmi</h2>
+    <h2 class="group-title">Titul (birinchi) sahifa</h2>
+    <div class="group">
+      <input class="input" data-profile="name" maxlength="100" aria-label="Ism familiya" placeholder="Ism familiya" value="${esc(f.profile.name)}" />
+      <div class="hairline"></div>
+      <input class="input" data-profile="group" maxlength="40" aria-label="Guruh" placeholder="Guruh, masalan: IQ-21" value="${esc(f.profile.group)}" />
+    </div>
+    <p class="group-note">Birinchi sahifa mavzu, ism-familiya va guruhingizdan avtomatik yaratiladi.</p>
+
+    ${
+      f.tier === "web"
+        ? ""
+        : `<h2 class="group-title">Hajmi</h2>
     <div class="options" role="radiogroup" aria-label="Hajmi" data-pick="size">
       ${sizeOptions(s, f.tier)
         .map(
@@ -556,7 +580,8 @@ function formView() {
             <b class="num">${o.size} ${esc(s.unit)}</b><small class="num">${som(o.price)}</small></button>`,
         )
         .join("")}
-    </div>
+    </div>`
+    }
 
     <h2 class="group-title">Til</h2>
     <div class="segmented" role="radiogroup" aria-label="Til" data-pick="lang">
@@ -569,16 +594,16 @@ function formView() {
       s.format === "pptx" ? designSection(f) : ""
     }
 
-    <h2 class="group-title">Titul varaq</h2>
+    <h2 class="group-title">Oliygoh maʼlumotlari</h2>
     <details class="group" id="f-profile"${summary ? "" : " open"}>
       <summary class="row">
         <span class="row-main">
-          <span class="row-title">${summary ? esc(summary) : "Talaba va oliygoh maʼlumotlari"}</span>
+          <span class="row-title">${summary ? esc(summary) : "Oliygoh, fakultet, oʻqituvchi (ixtiyoriy)"}</span>
           <span class="row-sub">${summary ? "Oʻzgartirish uchun bosing" : "Bir marta kiriting — keyin eslab qolinadi"}</span>
         </span>
         ${icon("chevron", "chevron")}
       </summary>
-      ${PROFILE_FIELDS.map(
+      ${EXTRA_PROFILE_FIELDS.map(
         ([key, label, placeholder]) => `<label class="field-row"><span>${label}</span>
           <input class="input" data-profile="${key}" maxlength="150" placeholder="${esc(placeholder)}" value="${esc(f.profile[key])}" /></label>`,
       ).join("")}
@@ -602,13 +627,83 @@ function formPrice() {
   return sizeOptions(service(f.service), f.tier).find((o) => o.size === f.size)?.price ?? 0;
 }
 
+/** Ranglar: tayyor palitralar + ixtiyoriy (custom) ikkita rang */
+function colorSection(f) {
+  const presets = state.config.colorPresets ?? [];
+  const custom = f.colorPreset === "custom";
+  return `
+    <h2 class="group-title">Ranglar</h2>
+    <div class="swatches" role="radiogroup" aria-label="Ranglar" data-colors>
+      ${presets
+        .map(
+          (p) => `<button class="swatch" role="radio" aria-checked="${f.colorPreset === p.id}" data-value="${p.id}" style="--a:${p.primary};--b:${p.accent}">
+            <span class="dots"><i></i><i></i></span><small>${esc(p.name)}</small></button>`,
+        )
+        .join("")}
+      <button class="swatch" role="radio" aria-checked="${custom}" data-value="custom" style="--a:${f.colors.primary};--b:${f.colors.accent}" id="swatch-custom">
+        <span class="dots"><i></i><i></i></span><small>Oʻzim tanlayman</small></button>
+    </div>
+    ${
+      custom
+        ? `<div class="group" style="margin-top:10px">
+        <label class="field-row"><span>Asosiy rang</span>
+          <input type="color" class="color-input" data-color="primary" value="${esc(f.colors.primary.toLowerCase())}" aria-label="Asosiy rang" /></label>
+        <label class="field-row"><span>Urgʻu rangi</span>
+          <input type="color" class="color-input" data-color="accent" value="${esc(f.colors.accent.toLowerCase())}" aria-label="Urgʻu rangi" /></label>
+      </div>
+      <p class="group-note">Matn har doim oʻqilishi uchun juda och ranglar avtomatik toʻqlashtiriladi.</p>`
+        : ""
+    }`;
+}
+
+function webFontOptions(selected) {
+  return (state.config.web?.fonts ?? [])
+    .map((font) => `<option value="${esc(font.id)}"${font.id === selected ? " selected" : ""}>${esc(font.name)}${font.kind === "serif" ? " · serif" : ""}</option>`)
+    .join("");
+}
+
+/** Premium 3D veb-taqdimot: ranglar va bepul shriftlar */
+function webDesign(f) {
+  const fonts = f.fonts ?? {};
+  return `
+    <div class="group" style="margin-top:10px">
+      <div class="row-static"><span>Format</span><span>Bitta .html fayl + onlayn havola</span></div>
+      <div class="row-static"><span>Boʻlimlar</span><span>~9 ta, mavzuga qarab</span></div>
+      <div class="row-static"><span>Effektlar</span><span>3D, animatsiya, jonli grafiklar</span></div>
+    </div>
+    <p class="group-note">Sayt koʻrinishidagi taqdimot: kompyuterda ikki marta bosib ochiladi, telefonda havola orqali. ← → tugmalari bilan oʻtiladi, F — toʻliq ekran.</p>
+    ${colorSection(f)}
+    <h2 class="group-title">Shriftlar (bepul)</h2>
+    <div class="group">
+      <label class="field-row"><span>Asosiy matn</span>
+        <select class="input select" data-font="body" aria-label="Asosiy shrift">${webFontOptions(fonts.body)}</select></label>
+      <label class="field-row"><span>Sarlavha / bezak</span>
+        <select class="input select" data-font="display" aria-label="Bezak shrifti">${webFontOptions(fonts.display)}</select></label>
+    </div>
+    <p class="group-note font-preview" id="font-preview">
+      <span data-preview="display" style="font-family:'pv-${esc(fonts.display)}',serif;font-size:1.5rem;display:block">Oʻzbekiston gʻalla · Ўзбекистон қишлоқ</span>
+      <span data-preview="body" style="font-family:'pv-${esc(fonts.body)}',sans-serif">Taqdimot matni shu shriftda boʻladi. Russian · English · 1234567890</span>
+    </p>
+    <div class="stack" style="margin-top:8px">
+      <button class="btn secondary" data-action="web-sample">${icon("sparkle")}Jonli namunani koʻrish (tanlovlaringiz bilan)</button>
+    </div>`;
+}
+
 function designSection(f) {
   const premium = state.config.premium ?? [];
+  const s = service(f.service);
   const tiers = `
     <div class="segmented" role="radiogroup" aria-label="Dizayn turi" data-tier>
-      <button role="radio" aria-checked="${f.tier === "premium"}" data-value="premium">${icon("sparkle", "seg-icon")}Premium · animatsiyali</button>
+      ${hasWeb(s) ? `<button role="radio" aria-checked="${f.tier === "web"}" data-value="web">${icon("sparkle", "seg-icon")}3D veb</button>` : ""}
+      <button role="radio" aria-checked="${f.tier === "premium"}" data-value="premium">Animatsiyali</button>
       <button role="radio" aria-checked="${f.tier === "standard"}" data-value="standard">Oddiy</button>
     </div>`;
+  if (f.tier === "web" && hasWeb(s)) {
+    return `
+      <h2 class="group-title">Dizayn</h2>
+      ${tiers}
+      ${webDesign(f)}`;
+  }
   if (f.tier === "premium" && premium.length) {
     const selected = premiumTemplate(f.theme) ?? premium[0];
     return `
@@ -623,13 +718,13 @@ function designSection(f) {
           )
           .join("")}
       </div>
-      <p class="group-note">${esc(selected.description)}. Morph oʻtishlari va kirish animatsiyalari PowerPoint 2019 / 365 da ishlaydi.</p>
+      <p class="group-note">${esc(selected.description)}. PowerPoint (.pptx) fayli: Morph oʻtishlari va kirish animatsiyalari PowerPoint 2019 / 365 da ishlaydi. Bu dizaynlarning ranglari tayyor, oʻzgartirib boʻlmaydi — rang va shrift tanlash uchun «3D veb» yoki «Oddiy» ni tanlang.</p>
       <div class="stack" style="margin-top:8px">
         ${selected.demo ? `<button class="btn secondary" data-action="demo">${icon("sparkle")}Jonli namunani koʻrish</button>` : ""}
         <button class="btn plain" data-action="sample">${icon("download")}«${esc(selected.name)}» namunasini yuklab olish (.pptx)</button>
-      </div>
-      ${selected.demo ? `<p class="group-note">Jonli namuna — shu dizayn olingan veb-taqdimot. Sizga tayyor fayl PowerPoint (.pptx) koʻrinishida keladi.</p>` : ""}`;
+      </div>`;
   }
+  const custom = f.theme === "custom";
   return `
     <h2 class="group-title">Dizayn</h2>
     ${tiers}
@@ -643,7 +738,25 @@ function designSection(f) {
             <small>${esc(t.name)}</small></button>`,
         )
         .join("")}
-    </div>`;
+      <button class="theme" role="radio" aria-checked="${custom}" data-value="custom">
+        <span class="slide" style="--dark:${f.colors.primary};--acc:${f.colors.accent}" id="custom-slide">
+          <i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="t1"></i><i class="t2"></i><i class="t3"></i>
+        </span>
+        <small>Oʻzim tanlayman</small></button>
+    </div>
+    ${
+      custom
+        ? `${colorSection(f)}
+    <h2 class="group-title">Shrift</h2>
+    <div class="group">
+      <label class="field-row"><span>Shrift</span>
+        <select class="input select" data-pptx-font aria-label="Shrift">${(state.config.pptxFonts ?? [])
+          .map((font) => `<option value="${esc(font.id)}"${font.id === f.pptxFont ? " selected" : ""}>${esc(font.name)}</option>`)
+          .join("")}</select></label>
+    </div>
+    <p class="group-note">PowerPoint faylga veb-shrift joylab boʻlmaydi, shuning uchun bu yerda kompyuterda bor shriftlar. Bepul Google shriftlari «3D veb» taqdimotda.</p>`
+        : ""
+    }`;
 }
 
 function updateFormButton() {
@@ -675,9 +788,22 @@ async function submitOrder() {
   showFormError("");
   mainButton.loading(true);
   try {
-    const { order } = await api("/orders", { method: "POST", body: f });
+    const { tier, colorPreset, pptxFont, ...body } = f;
+    if (tier === "web") {
+      body.theme = WEB_ID;
+      body.fonts = f.fonts;
+    } else if (tier === "standard" && f.theme === "custom") {
+      body.fonts = { body: pptxFont, head: pptxFont };
+    } else {
+      delete body.colors;
+      delete body.fonts;
+    }
+    const { order } = await api("/orders", { method: "POST", body });
     try {
-      localStorage.setItem("lastForm", JSON.stringify({ lang: f.lang, theme: f.theme, subject: f.subject }));
+      localStorage.setItem(
+        "lastForm",
+        JSON.stringify({ lang: f.lang, theme: f.theme, subject: f.subject, colorPreset: f.colorPreset, colors: f.colors, fonts: f.fonts, pptxFont: f.pptxFont }),
+      );
     } catch {}
     haptic("success");
     state.me.balance -= order.price;
@@ -743,8 +869,14 @@ function progressSheet(order) {
     <span class="line head"><i style="width:${progress > 4 ? 100 : 0}%"></i></span>${lines}${seal}</div>`;
 }
 
+const WEB_STEPS = [
+  ["Mazmun yozilmoqda", 72],
+  ["Rasm tanlanmoqda", 88],
+  ["3D taqdimot yigʻilmoqda", 100],
+];
+
 function stepList(order) {
-  const steps = stepsFor(order.service);
+  const steps = order.theme === WEB_ID ? WEB_STEPS : stepsFor(order.service);
   const progress = order.status === "done" ? 100 : order.progress;
   let currentFound = false;
   return `<ol class="steps">${steps
@@ -772,7 +904,8 @@ function orderView() {
     head = `<h1 class="title">Tayyor</h1><p class="sub">Fayl chatga yuborildi${result ? ` · ${esc(result)}` : ""}</p>`;
     actions = `
       <div class="stack">
-        <button class="btn" data-action="download">${icon("download")}Yuklab olish</button>
+        ${order.viewUrl ? `<button class="btn" data-action="view">${icon("sparkle")}Onlayn koʻrish</button>` : ""}
+        <button class="btn${order.viewUrl ? " secondary" : ""}" data-action="download">${icon("download")}Yuklab olish${order.viewUrl ? " (.html)" : ""}</button>
         <button class="btn secondary" data-action="resend">${icon("send")}Chatga qayta yuborish</button>
       </div>`;
   } else if (order.status === "failed") {
@@ -795,12 +928,18 @@ function orderView() {
     <h2 class="group-title">Buyurtma #${order.id}</h2>
     <div class="group">
       <div class="row-static"><span>Mavzu</span><span>${esc(order.topic)}</span></div>
-      <div class="row-static"><span>Xizmat</span><span>${esc(s?.title)} · ${order.size} ${esc(s?.unit)}</span></div>
+      <div class="row-static"><span>Xizmat</span><span>${esc(s?.title)} · ${order.theme === WEB_ID ? "3D veb" : `${order.size} ${esc(s?.unit)}`}</span></div>
       <div class="row-static"><span>Til</span><span>${esc(lang)}</span></div>
       ${
         order.theme && order.service === "taqdimot"
           ? `<div class="row-static"><span>Dizayn</span><span>${
-              premiumTemplate(order.theme) ? `${esc(premiumTemplate(order.theme).name)} · premium` : esc(state.config.themes.find((t) => t.id === order.theme)?.name ?? order.theme)
+              order.theme === WEB_ID
+                ? "Premium 3D (veb)"
+                : order.theme === "custom"
+                  ? "Moslashtirilgan"
+                  : premiumTemplate(order.theme)
+                    ? `${esc(premiumTemplate(order.theme).name)} · premium`
+                    : esc(state.config.themes.find((t) => t.id === order.theme)?.name ?? order.theme)
             }</span></div>`
           : ""
       }
@@ -829,6 +968,33 @@ function startPolling() {
       }
     } catch {}
   }, 2500);
+}
+
+let fontsLoaded = false;
+/** Shrift tanlash ro'yxatidagi namunalar uchun @font-face (serverdagi /web-fonts dan, har bir qism kerak bo'lganda yuklanadi) */
+async function loadFontPreviews() {
+  if (fontsLoaded) return;
+  fontsLoaded = true;
+  try {
+    const manifest = await (await fetch("/web-fonts/manifest.json")).json();
+    const css = Object.entries(manifest)
+      .flatMap(([id, font]) =>
+        font.faces.map(
+          (face) => `@font-face{font-family:'pv-${id}';font-display:swap;font-weight:${face.weight};src:url(/web-fonts/${face.file}) format('woff2');unicode-range:${face.range}}`,
+        ),
+      )
+      .join("");
+    const style = document.createElement("style");
+    style.textContent = css;
+    document.head.appendChild(style);
+  } catch {
+    fontsLoaded = false;
+  }
+}
+
+function openExternal(url) {
+  if (inTelegram) tg.openLink(url);
+  else window.open(url, "_blank");
 }
 
 function downloadUrl(url, fileName) {
@@ -1041,8 +1207,11 @@ function bindForm(view) {
       haptic("select");
       f.tier = tier;
       const premium = state.config.premium ?? [];
-      if (tier === "premium" && !premiumTemplate(f.theme)) f.theme = premium[0]?.id ?? f.theme;
-      if (tier === "standard" && premiumTemplate(f.theme)) f.theme = state.config.themes[0].id;
+      if (tier === "web") f.theme = WEB_ID;
+      else if (tier === "premium" && !premiumTemplate(f.theme)) f.theme = premium[0]?.id ?? f.theme;
+      else if (tier === "standard" && (premiumTemplate(f.theme) || f.theme === WEB_ID)) f.theme = state.config.themes[0].id;
+      const sizes = sizeOptions(service(f.service), tier);
+      if (!sizes.some((o) => o.size === f.size)) f.size = sizes[0]?.size ?? f.size;
       const y = window.scrollY;
       render();
       window.scrollTo(0, y);
@@ -1054,6 +1223,53 @@ function bindForm(view) {
     if (!template?.demo) return;
     if (inTelegram) tg.openLink(template.demo);
     else window.open(template.demo, "_blank");
+  });
+  // Ranglar: tayyor palitra yoki ixtiyoriy ikki rang
+  $("[data-colors]", view)?.querySelectorAll("[role=radio]").forEach((option) =>
+    option.addEventListener("click", () => {
+      haptic("select");
+      const id = option.dataset.value;
+      const preset = state.config.colorPresets.find((p) => p.id === id);
+      f.colorPreset = id;
+      if (preset) f.colors = { primary: preset.primary, accent: preset.accent };
+      const y = window.scrollY;
+      render();
+      window.scrollTo(0, y);
+    }),
+  );
+  $$("[data-color]", view).forEach((input) =>
+    input.addEventListener("input", () => {
+      f.colors[input.dataset.color] = input.value.toUpperCase();
+      f.colorPreset = "custom";
+      for (const el of [$("#swatch-custom", view), $("#custom-slide", view)]) {
+        el?.style.setProperty(el.id === "swatch-custom" ? "--a" : "--dark", f.colors.primary);
+        el?.style.setProperty(el.id === "swatch-custom" ? "--b" : "--acc", f.colors.accent);
+      }
+    }),
+  );
+  $$("[data-font]", view).forEach((select) =>
+    select.addEventListener("change", () => {
+      f.fonts[select.dataset.font] = select.value;
+      const kind = select.dataset.font;
+      const family = kind === "display" ? "serif" : "sans-serif";
+      $(`[data-preview=${kind}]`, view)?.style.setProperty("font-family", `'pv-${select.value}', ${family}`);
+    }),
+  );
+  $("[data-pptx-font]", view)?.addEventListener("change", (e) => (f.pptxFont = e.target.value));
+  if (f.tier === "web") loadFontPreviews();
+  $("[data-action=web-sample]", view)?.addEventListener("click", () => {
+    haptic();
+    const q = new URLSearchParams({
+      primary: f.colors.primary.replace("#", ""),
+      accent: f.colors.accent.replace("#", ""),
+      body: f.fonts.body ?? "",
+      display: f.fonts.display ?? "",
+      lang: f.lang,
+      title: f.topic.trim().slice(0, 120),
+      name: (f.profile.name ?? "").slice(0, 100),
+      group: (f.profile.group ?? "").slice(0, 40),
+    });
+    openExternal(`${location.origin}/samples/web?${q}`);
   });
   $("[data-action=sample]", view)?.addEventListener("click", () => {
     haptic();
@@ -1068,7 +1284,7 @@ function bindForm(view) {
         haptic("select");
         f[key] = key === "size" ? Number(option.dataset.value) : option.dataset.value;
         $$("[role=radio]", group).forEach((other) => other.setAttribute("aria-checked", String(other === option)));
-        if (key === "theme" && f.tier === "premium") {
+        if (key === "theme" && (f.tier === "premium" || f.tier === "standard")) {
           // Tavsif va namuna tugmasi tanlangan shablonga mos bo'lishi uchun
           const y = window.scrollY;
           render();
@@ -1094,6 +1310,10 @@ function bindOrder(view) {
     return;
   }
   if (order.status === "queued" || order.status === "processing") startPolling();
+  $("[data-action=view]", view)?.addEventListener("click", () => {
+    haptic();
+    openExternal(order.viewUrl);
+  });
   $("[data-action=download]", view)?.addEventListener("click", async () => {
     haptic();
     // Havola muddatli, shuning uchun yangisini olamiz.
@@ -1172,8 +1392,12 @@ async function init() {
   const link = new URLSearchParams(start);
   const serviceId = link.get("service");
   const orderId = Number(link.get("order"));
-  if (serviceId && service(serviceId)) go("form", { form: newForm(serviceId, link.get("theme") || undefined) });
-  else if (orderId) go("order", { orderId });
+  if (serviceId && service(serviceId)) {
+    const form = newForm(serviceId, link.get("theme") || undefined);
+    // Botga yozilgan mavzu (#service=...&topic=...) formaga tayyor holda keladi
+    form.topic = (link.get("topic") ?? "").trim().slice(0, 300);
+    go("form", { form });
+  } else if (orderId) go("order", { orderId });
   else go(["orders", "balance"].includes(start) ? start : "home");
 }
 

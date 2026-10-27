@@ -1,0 +1,17 @@
+{
+  "lang": "en",
+  "year": 2026,
+  "theme": { "primary": "#14532d", "accent": "#d97706" },
+  "cover": { "kicker": "", "title": "Photosynthesis", "subtitle": "How plants turn light into sugar.", "name": "", "group": "", "university": "", "faculty": "", "teacher": "", "city": "" },
+  "brand": "Photosynthesis",
+  "readouts": [],
+  "overview": { "heading": "What is photosynthesis?", "lead": "Plants use sunlight, water and carbon dioxide to make glucose and oxygen.", "pull": "", "facts": [{ "value": "6CO₂", "label": "carbon dioxide molecules per glucose" }], "image": "", "imageAlt": "" },
+  "numbers": { "heading": "", "lead": "", "stats": [], "chart": { "title": "", "unit": "", "note": "", "bars": [] } },
+  "timeline": { "heading": "", "lead": "", "steps": [] },
+  "concepts": { "heading": "", "lead": "", "cards": [], "keywords": [] },
+  "problems": { "heading": "", "lead": "", "items": [] },
+  "future": { "heading": "", "lead": "", "items": [] },
+  "compare": { "heading": "", "lead": "", "left": "", "right": "", "rows": [], "similar": [], "different": [], "lessonsTitle": "", "lessons": [] },
+  "conclusion": { "heading": "Conclusion", "points": ["Light energy is stored as chemical energy.", "Oxygen is released as a by-product."] },
+  "sources": []
+}

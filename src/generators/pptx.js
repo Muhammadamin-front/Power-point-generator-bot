@@ -1,5 +1,6 @@
 import PptxGenJS from "pptxgenjs";
 import { clip, fitSize, textHeight } from "./fit.js";
+import { customPptxTheme } from "./colors.js";
 import { labelsFor } from "./labels.js";
 
 // Slayd o'lchami: 16:9, 10 × 5.625 dyuym.
@@ -346,7 +347,8 @@ function thanksSlide(pres, t, deck, L) {
  * deck: DeckSchema + { lang, theme, subject, profile }; images: slayd indeksi → "image/jpeg;base64,..."
  */
 export async function buildPptx(deck, images = {}) {
-  const t = THEMES[deck.theme] ?? THEMES.midnight;
+  // "custom" — foydalanuvchi tanlagan ranglar va shrift (deck.colors, deck.fonts)
+  const t = deck.theme === "custom" ? customPptxTheme(deck.colors, deck.fonts) : (THEMES[deck.theme] ?? THEMES.midnight);
   const L = labelsFor(deck.lang);
   const pres = new PptxGenJS();
   pres.layout = "LAYOUT_16x9";

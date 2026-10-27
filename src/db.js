@@ -129,7 +129,8 @@ export function getUser(id) {
 
 /**
  * Foydalanuvchini yaratadi yoki ma'lumotlarini yangilaydi.
- * Yangi foydalanuvchiga boshlang'ich bonus, taklif qilganga referal bonus beriladi.
+ * Yangi foydalanuvchiga boshlang'ich bonus beriladi. Taklif qilganga referal bonus esa
+ * taklif qilingan foydalanuvchi birinchi marta pul to'laganidan keyin beriladi (rewardReferrer).
  */
 export function ensureUser({ id, username, first_name }, referrerId = null) {
   return tx(() => {
@@ -152,9 +153,6 @@ export function ensureUser({ id, username, first_name }, referrerId = null) {
     }
     if (config.startBonus > 0) {
       applyBalance(id, config.startBonus, "bonus", `start:${id}`, "Boshlang'ich bonus");
-    }
-    if (referrer && config.referralBonus > 0) {
-      applyBalance(referrer.id, config.referralBonus, "referral", `ref:${id}`, `Taklif qilingan: ${id}`);
     }
     return { user: getUser(id), isNew: true, referrerId: referrer?.id ?? null };
   });
@@ -209,6 +207,35 @@ export function addBalance(userId, amount, kind, ref = null, note = null) {
   return tx(() => {
     applyBalance(userId, amount, kind, ref, note);
     return getUser(userId).balance;
+  });
+}
+
+// Haqiqiy pul tushgan to'lov turlari (bonus, promokod va admin qo'shganlari kirmaydi).
+const PAID_KINDS = new Set(["stars", "provider", "card"]);
+
+/**
+ * Faqat tx() ichida chaqiriladi. Foydalanuvchini taklif qilgan odamga referal bonusini beradi va uning ID'sini
+ * qaytaradi. Bonus har bir taklif qilingan foydalanuvchi uchun bir martagina beriladi (birinchi to'lovida).
+ */
+function rewardReferrer(userId) {
+  if (config.referralBonus <= 0) return null;
+  const referrerId = db.prepare("SELECT referred_by FROM users WHERE id = ?").get(userId)?.referred_by;
+  if (!referrerId) return null;
+  const given = db.prepare("SELECT 1 FROM transactions WHERE kind = 'referral' AND ref = ?").get(`ref:${userId}`);
+  if (given) return null;
+  applyBalance(referrerId, config.referralBonus, "referral", `ref:${userId}`, `Taklif qilingan: ${userId}`);
+  return referrerId;
+}
+
+/**
+ * Haqiqiy to'lovni (Stars, Click/Payme) balansga qo'shadi. Taklif qilingan foydalanuvchining birinchi to'lovi bo'lsa,
+ * taklif qilganga referal bonusi beriladi. { balance, referrerId } qaytaradi.
+ */
+export function addPayment(userId, amount, kind, ref = null, note = null) {
+  return tx(() => {
+    applyBalance(userId, amount, kind, ref, note);
+    const referrerId = PAID_KINDS.has(kind) ? rewardReferrer(userId) : null;
+    return { balance: getUser(userId).balance, referrerId };
   });
 }
 
@@ -368,8 +395,12 @@ export function resolveTopup(topupId, approve, adminId) {
       .run(approve ? "approved" : "rejected", adminId, now(), topupId);
     if (result.changes === 0) return null;
     const topup = getTopup(topupId);
-    if (approve) applyBalance(topup.user_id, topup.amount, "card", `topup:${topup.id}`, "Karta orqali");
-    return { topup, balance: getUser(topup.user_id).balance };
+    let referrerId = null;
+    if (approve) {
+      applyBalance(topup.user_id, topup.amount, "card", `topup:${topup.id}`, "Karta orqali");
+      referrerId = rewardReferrer(topup.user_id);
+    }
+    return { topup, balance: getUser(topup.user_id).balance, referrerId };
   });
 }
 

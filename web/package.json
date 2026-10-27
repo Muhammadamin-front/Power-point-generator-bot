@@ -1,0 +1,44 @@
+{
+  "name": "web-taqdimot-shablon",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Premium 3D veb-taqdimot shabloni. Mazmun (JSON) buyurtma paytida serverda ichiga joylanadi. `npm run build` natijasi ../assets/web/template.html ga yoziladi.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build && node scripts/inline.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@number-flow/react": "^0.6.2",
+    "@paper-design/shaders-react": "^0.0.81",
+    "clsx": "^2.1.1",
+    "gsap": "^3.15.0",
+    "lenis": "^1.3.26",
+    "lucide-react": "^1.53.0",
+    "motion": "^14.0.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwind-merge": "^3.7.0"
+  },
+  "devDependencies": {
+    "@fontsource-variable/commissioner": "^5.3.0",
+    "@fontsource-variable/cormorant-garamond": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/lora": "^5.3.0",
+    "@fontsource-variable/merriweather": "^5.3.0",
+    "@fontsource-variable/montserrat": "^5.3.0",
+    "@fontsource-variable/noto-serif": "^5.3.0",
+    "@fontsource-variable/nunito": "^5.3.0",
+    "@fontsource-variable/onest": "^5.3.1",
+    "@fontsource-variable/raleway": "^5.3.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.3"
+  }
+}

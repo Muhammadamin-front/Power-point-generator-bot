@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { AIError, generate } from "./ai/index.js";
+import { WEB_SYSTEM_PROMPT, WebDeckSchema, normalizeWebDeck, visibleSectionCount, webDeckPrompt } from "./ai/webdeck.js";
 import {
   DeckSchema,
   OutlineSchema,
@@ -13,12 +14,15 @@ import {
   testPrompt,
 } from "./ai/prompts.js";
 import { config } from "./config.js";
+import { normalizeColors } from "./generators/colors.js";
 import { buildDocx } from "./generators/docx.js";
-import { fetchSlideImages } from "./generators/images.js";
+import { fetchLandscapeImage, fetchSlideImages } from "./generators/images.js";
 import { labelsFor } from "./generators/labels.js";
 import { buildPptx } from "./generators/pptx.js";
 import { buildPremiumPptx } from "./generators/premium/build.js";
 import { isPremium } from "./generators/premium/templates.js";
+import { DEFAULT_FONTS, FONTS, buildWebDeck } from "./generators/web/build.js";
+import { isWeb } from "./generators/web/meta.js";
 import { getService } from "./services.js";
 
 export const FILES_DIR = path.join(config.dataDir, "files");
@@ -69,8 +73,55 @@ function shuffle(items) {
 
 // ---------- Taqdimot ----------
 
+/** Titul sahifa ma'lumotlari: AI'dan emas, foydalanuvchi kiritganidan (mavzu, F.I.Sh., guruh va h.k.). */
+function coverFrom(order, subject) {
+  const profile = order.params.profile ?? {};
+  const topic = order.topic.replace(/\s+/g, " ").trim();
+  return {
+    kicker: subject ?? "",
+    title: topic.charAt(0).toUpperCase() + topic.slice(1),
+    name: profile.name ?? "",
+    group: profile.group ?? "",
+    university: profile.university ?? "",
+    faculty: profile.faculty ?? "",
+    teacher: profile.teacher ?? "",
+    city: profile.city ?? "",
+  };
+}
+
+/** Premium 3D veb-taqdimot: AI faqat mazmun yozadi, dizayn va 3D effektlar tayyor shablonda. */
+async function runWebPresentation(order, request, progress) {
+  const { lang, subject, colors, fonts } = order.params;
+
+  progress(8, "Veb-taqdimot mazmuni yozilmoqda");
+  const ai = await generateWithRetry({
+    system: WEB_SYSTEM_PROMPT,
+    prompt: webDeckPrompt(request),
+    schema: WebDeckSchema,
+    maxTokens: 32000,
+  });
+
+  progress(72, "Rasm tanlanmoqda");
+  const image = await fetchLandscapeImage(ai.overview?.image_query);
+
+  progress(88, "3D taqdimot yigʻilmoqda");
+  const { primary, accent } = normalizeColors(colors);
+  const deck = normalizeWebDeck(ai, {
+    cover: { ...coverFrom(order, subject), subtitle: "" },
+    lang,
+    year: new Date().getFullYear(),
+    theme: { primary, accent },
+    image,
+  });
+  const body = FONTS[fonts?.body] ? fonts.body : DEFAULT_FONTS.body;
+  const display = FONTS[fonts?.display] ? fonts.display : DEFAULT_FONTS.display;
+  const buffer = buildWebDeck(deck, { body, display });
+  return { buffer, ext: "html", title: deck.cover.title, summary: `${visibleSectionCount(deck)} ta boʻlim` };
+}
+
 async function runPresentation(order, request, progress) {
-  const { size, lang, theme, subject, profile } = order.params;
+  if (isWeb(order.params.theme)) return runWebPresentation(order, request, progress);
+  const { size, lang, theme, subject, profile, colors, fonts } = order.params;
   const contentSlides = Math.max(3, size - 4);
 
   progress(10, "Slaydlar mazmuni yozilmoqda");
@@ -88,7 +139,7 @@ async function runPresentation(order, request, progress) {
 
   progress(90, premium ? "Animatsiyalar qoʻshilmoqda" : "Taqdimot yigʻilmoqda");
   const build = premium ? buildPremiumPptx : buildPptx;
-  const buffer = await build({ ...deck, slides, lang, theme, subject, profile }, images);
+  const buffer = await build({ ...deck, slides, lang, theme, colors, fonts, subject, profile }, images);
   const slideCount = slides.length + 4 + (deck.references.length ? 1 : 0);
   return { buffer, ext: "pptx", title: deck.title, summary: `${slideCount} ta slayd` };
 }

@@ -54,7 +54,7 @@ export const config = {
   },
   minCardTopup: int("MIN_CARD_TOPUP", 5000),
   starPriceSom: int("STAR_PRICE_SOM", 200),
-  startBonus: int("START_BONUS", 5000),
+  startBonus: int("START_BONUS", 2000),
   referralBonus: int("REFERRAL_BONUS", 2000),
 
   // Ixtiyoriy majburiy obuna: buyurtma berishdan oldin shu kanalga a'zo bo'lish kerak (bot kanalda admin bo'lishi shart)
